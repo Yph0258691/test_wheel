@@ -2,9 +2,12 @@
 #include "proxyEngine.h"
 #include <wheel/client.hpp>
 #include <wheel/server.hpp>
+#include"test.h"
 
 int main()
 {
+        Test t;
+        t.display();
 	ProxyEngine eng;
 	std::shared_ptr<wheel::tcp_socket::server> ptr = std::make_shared<wheel::tcp_socket::server>(std::bind(&ProxyEngine::OnMessage, &eng, std::placeholders::_1,std::placeholders::_2),0,8,2,6); //偏移后的值
 

@@ -3,9 +3,21 @@
 #include <wheel/client.hpp>
 #include <wheel/server.hpp>
 #include"test.h"
-
+#include <nlohmann_json.hpp>
 int main()
 {
+        try{
+		nlohmann::json js;
+		js["name"] = "123";
+		js["sex"] = 1;
+		js["age"] = 12;
+
+		std::string json = js.dump();
+		std::cout << json << std::endl;
+	}catch (...) {
+
+	}
+   
         Test t;
         t.display();
 	ProxyEngine eng;

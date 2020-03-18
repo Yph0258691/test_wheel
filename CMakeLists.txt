@@ -2,8 +2,8 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8) 
 #项目名 
 PROJECT(test_wheel)
-#设置安装路径
-SET(CMAKE_INSTALL_PREFIX "/home/test_wheel")
+#安装路径写死
+#SET(CMAKE_INSTALL_PREFIX "/home/test_wheel")
 # 版本号 1.0.1
 set (TEST_WHEEL_VERSION_MINOR 1)
 set (TEST_WHEEL_VERSION_MINOR 0)
@@ -12,12 +12,14 @@ set (TEST_WHEEL_VERSION_MINOR 1)
 SET(CMAKE_C_COMPILER gcc)
 #设置c++编辑器			
 SET(CMAKiE_CXX_COMPILER g++)
+#默认开启debug
+set(CMAKE_BUILD_TYPE "Debug")
 #设置C++编辑选项			
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g -Wall -fpic -fPIC -lpthread")
 #设置C++debug版本编辑选项 --D_DEBUG宏 --ggdb生成debug信息	
-SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -D_DEBUG -00 --ggdb")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")
 #设置C++release编辑选项 -02表示优化级别
-SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -D_DEBUG -02")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
 #预定义的宏
 ADD_DEFINITIONS(-DPROTOBUF_INLINE_NOT_IN_HEADERS=0)  
 #工程选项根目录，CMAKE_SOURCE_DIR为当前目录
@@ -38,7 +40,6 @@ INCLUDE_DIRECTORIES(${PROJECT_ROOT_PATH}/)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/game_logic)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party)
 INCLUDE_DIRECTORIES(.)
-#make install的时候。打包源文件
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/ DESTINATION include/third_party/ )
 install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
 #增加子文件

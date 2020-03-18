@@ -5,9 +5,9 @@ PROJECT(test_wheel)
 #安装路径写死
 #SET(CMAKE_INSTALL_PREFIX "/home/test_wheel")
 # 版本号 1.0.1
-set (TEST_WHEEL_VERSION_MINOR 1)
-set (TEST_WHEEL_VERSION_MINOR 0)
-set (TEST_WHEEL_VERSION_MINOR 1)
+set (VERSION_MAJOR 1)
+set (VERSION_MINOR 0)
+set (VERSION_PATCH 1)
 #设置C编辑器						
 SET(CMAKE_C_COMPILER gcc)
 #设置c++编辑器			
@@ -45,3 +45,31 @@ install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
 #增加子文件
 ADD_SUBDIRECTORY(game_logic)
 ADD_SUBDIRECTORY(src)
+
+#放在install的目的是,先编译install再执行package此地方要注意
+#包含此平台所有的东西
+include (InstallRequiredSystemLibraries)
+#让cmake给我生成证书,若linux下安装,Linux下安装会提示
+set (CPACK_RESOURCE_FILE_LICENSE
+  "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
+#判断系统平台
+IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
+	MESSAGE(STATUS "current platform: Linux ")
+ELSE()
+set(CPACK_GENERATOR NSIS)
+SET(CPACK_NSIS_MODIFY_PATH ON)
+	MESSAGE(STATUS "current platform: Windows")
+ENDIF() 
+
+#当前Cmakelist先生成pack文件夹
+set(CPACK_PACKAGE_DIRECTORY ${PROJECT_SOURCE_DIR}/pack)
+set(CPACK_PACKAGE_VERSION_MAJOR "${VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
+#版本号
+set(PROJECT_VERSION_FULL ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+#设置包的后缀名
+set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME ${PROJECT_NAME}-${PROJECT_VERSION_FULL})
+#安装包
+include(CPack)

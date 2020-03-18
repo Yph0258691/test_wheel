@@ -46,7 +46,7 @@ install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
 ADD_SUBDIRECTORY(game_logic)
 ADD_SUBDIRECTORY(src)
 
-#放在install的目的是,先编译install再执行package此地方要注意
+#放在install后的目的是,先编译install再执行package此地方要注意
 #包含此平台所有的东西
 include (InstallRequiredSystemLibraries)
 #让cmake给我生成证书,若linux下安装,Linux下安装会提示

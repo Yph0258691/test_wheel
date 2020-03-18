@@ -11,6 +11,7 @@
 #include "websocket_handle.hpp"
 #include "picohttpparser.hpp"
 #include <list>
+#include <iostream>
 
 namespace wheel {
 	namespace tcp_socket {
@@ -32,7 +33,7 @@ namespace wheel {
 		class tcp_handle :public std::enable_shared_from_this<tcp_handle>
 		{
 		public:
-			tcp_handle(std::shared_ptr<boost::asio::io_service>ptr, std::size_t header_size,
+			tcp_handle(const std::shared_ptr<boost::asio::io_service>&ptr, std::size_t header_size,
 				std::size_t packet_size_offset, std::size_t packet_cmd_offset)
 				:ios_(ptr)
 				, connect_status_(-1)
@@ -40,8 +41,16 @@ namespace wheel {
 				, packet_size_offset_(packet_size_offset)
 				, packet_cmd_offset_(packet_cmd_offset)
 			{
-				socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*ios_);
-				timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				try
+				{
+					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*ios_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				}catch (std::exception &ex){
+					std::cout << ex.what() << std::endl;
+					socket_ = nullptr;
+					timer_ = nullptr;
+				}
+
 			}
 
 			~tcp_handle() {
@@ -54,7 +63,15 @@ namespace wheel {
 			void set_protocol_parse_type(int type) {
 				parser_type_ = type;
 				if (protocol_parser_ == nullptr) {
-					protocol_parser_ = create_object(type, header_size_, packet_size_offset_, packet_cmd_offset_);
+					try
+					{
+						protocol_parser_ = create_object(type, header_size_, packet_size_offset_, packet_cmd_offset_);
+					}	catch (const std::exception&ex)
+					{
+						std::cout << ex.what() << std::endl;
+						protocol_parser_ = nullptr;
+					}
+
 				}
 			}
 
@@ -76,7 +93,7 @@ namespace wheel {
 
 				boost::system::error_code ec;
 				socket_->shutdown(TCP::socket::shutdown_send, ec);
-				return 0;
+				return ec.value();
 			}
 
 			int close_rs_endpoint() {
@@ -86,7 +103,7 @@ namespace wheel {
 
 				boost::system::error_code ec;
 				socket_->shutdown(TCP::socket::shutdown_both, ec);
-				return 0;
+				return ec.value();
 			}
 
 			int close_recv_endpoint() {
@@ -97,7 +114,7 @@ namespace wheel {
 				//执行操作之后，会模拟进入客户端关闭socket的操作
 				boost::system::error_code ec;
 				socket_->shutdown(TCP::socket::shutdown_receive, ec);
-				return 0;
+				return ec.value();
 			}
 
 			int close_socket() {
@@ -107,12 +124,7 @@ namespace wheel {
 
 				boost::system::error_code e;
 				socket_->close(e);
-
-				if (e) {
-					return -1;
-				}
-
-				return 0;
+				return e.value();
 			}
 
 
@@ -130,22 +142,40 @@ namespace wheel {
 				}
 
 				//如果下一个包来，就可以放在末尾发，可以利用当前的内存，达到写多少，发多少的效果
+				//最好枷锁
+				std::shared_ptr<send_buffer>ptr = nullptr;
+				while (data_lock_.test_and_set(std::memory_order_acquire));
 				if (!send_buffers_.empty()) {
 					if (!send_buffers_.back()->write(data, count))
 					{
-						std::shared_ptr<send_buffer>ptr = std::make_shared<send_buffer>(data, count);
+						try
+						{
+							ptr = std::make_shared<send_buffer>(data, count);
+						}catch (const std::exception&ex)
+						{
+							std::cout << ex.what() << std::endl;
+						}
+
 						if (ptr != nullptr) {
 							send_buffers_.push_back(ptr);
 						}
 					}
 				}
 				else {
-					std::shared_ptr<send_buffer>ptr = std::make_shared<send_buffer>(data, count);
+					try
+					{
+						ptr = std::make_shared<send_buffer>(data, count);
+					}catch (const std::exception&ex)
+					{
+						std::cout << ex.what() << std::endl;
+					}
+				
 					if (ptr != nullptr) {
 						send_buffers_.push_back(ptr);
 					}
 				}
 
+				data_lock_.clear(std::memory_order_release);
 				if (write_count_ == 0) {
 					++write_count_;//1:等于0就相加，2:若此变量为1，说明有错误 
 
@@ -233,11 +263,105 @@ namespace wheel {
 
 				return protocol_parser_->get_write_parser();
 			}
+
+			std::size_t get_base_receive_buffer_size() {
+				if (socket_ == nullptr) {
+					return 0;
+				}
+
+				boost::asio::socket_base::receive_buffer_size opt;
+				socket_->get_option(opt);
+				return opt.value();
+			}
+
+			std::size_t get_base_send_buffer_size() {
+				if (socket_ == nullptr) {
+					return 0;
+				}
+
+				boost::asio::socket_base::send_buffer_size opt;
+				socket_->get_option(opt);
+				return opt.value();
+			}
+
+			int set_base_receive_buffer_size(std::size_t size, bool force = false) {
+				if (socket_ == nullptr){
+					return -1;
+				}
+
+				boost::system::error_code ec;
+
+				///net.core.rmem_max, 大于这个系数值的话，就得先修改这个系统参数了
+				//net.core.rmem_default 默认大小
+				//	/proc/sys/net/ipv4/tcp_window_scaling	"1"	启用 RFC 1323 定义的 window scaling；要支持超过 64KB 的窗口，必须启用该值。
+				// 系统根据负载，在这三个值之间调整SOCKET窗口大小
+				// net.ipv4.tcp_wmem = 4096	16384	4194304
+				// net.ipv4.tcp_rmem = 4096	87380	4194304
+
+				// 	/proc/sys/net/ipv4/tcp_wmem	"4096 16384 131072"	为自动调优定义每个 socket 使用的内存。
+				// 		第一个值是为 socket 的发送缓冲区分配的最少字节数。
+				// 		第二个值是默认值（该值会被 wmem_default 覆盖），缓冲区在系统负载不重的情况下可以增长到这个值。
+				// 		第三个值是发送缓冲区空间的最大字节数（该值会被 wmem_max 覆盖）。
+
+				if (force == true) {
+					boost::asio::socket_base::receive_buffer_size  rs(size);
+					socket_->set_option(rs, ec);
+				}
+				else {
+					std::size_t recv_buffer_size = get_base_receive_buffer_size();
+					if (ec.value() != 0 || recv_buffer_size < size)
+					{
+						boost::asio::socket_base::receive_buffer_size  rs(size);
+						socket_->set_option(rs, ec);
+					}
+				}
+
+				return ec.value();
+			}
+
+			int set_base_send_buffer_size(std::size_t send_buffer_size, bool force=false)
+			{
+				if (socket_ == nullptr) {
+					return -1;
+
+				}
+				boost::system::error_code ec;
+
+				///net.core.wmem_max, 大于这个系数值的话，就得先修改这个系统参数了
+				//net.core.wmem_default 默认大小
+				if (force == true){
+					boost::asio::socket_base::send_buffer_size op(send_buffer_size);
+					socket_->set_option(op, ec);
+				}else{
+					std::size_t buffer_size = get_base_send_buffer_size();
+					if (ec.value() != 0 || buffer_size < send_buffer_size)
+					{
+						boost::asio::socket_base::send_buffer_size op(send_buffer_size);
+						socket_->set_option(op, ec);
+					}
+				}
+
+				return ec.value();
+			}
+
 		private:
 			void init() {
 				boost::system::error_code ec;
 				//关闭牛逼的算法(nagle算法),防止TCP的数据包在饱满时才发送过去
 				socket_->set_option(boost::asio::ip::tcp::no_delay(true), ec);
+
+				//有time_wait状态下，可端口短时间可以重用
+				//默认是2MSL也就是 (RFC793中规定MSL为2分钟)也就是4分钟
+				set_reuse_address();	
+			}
+
+			void set_reuse_address() {
+				if (socket_ == nullptr) {
+					return;
+				}
+
+				boost::system::error_code ec;
+				socket_->set_option(boost::asio::socket_base::reuse_address(true), ec);
 			}
 
 			void to_read() {
@@ -245,7 +369,14 @@ namespace wheel {
 					return;
 				}
 
-				recv_buffer_ = std::make_unique<char[]>(g_packet_buffer_size);
+				try
+				{
+					recv_buffer_ = std::make_unique<char[]>(g_packet_buffer_size);
+				}catch (std::exception & ex) {
+					recv_buffer_ = nullptr;
+					std::cout << ex.what() << std::endl;
+				}
+				
 				if (recv_buffer_ == nullptr){
 					return;
 				}
@@ -271,7 +402,7 @@ namespace wheel {
 					}
 					});
 			}
-			void async_connect(std::string ip, int port, MessageEventObserver recv_observer, CloseEventObserver close_observer) {
+			void async_connect(std::string ip, int port, const MessageEventObserver& recv_observer, const CloseEventObserver& close_observer) {
 				if (socket_ == nullptr){
 					return;
 				}
@@ -282,8 +413,8 @@ namespace wheel {
 					}
 
 					set_connect_status(connectinged);
-					register_close_observer(std::move(close_observer));
-					register_recv_observer(std::move(recv_observer));
+					register_close_observer(close_observer);
+					register_recv_observer(recv_observer);
 					to_read();
 					});
 			}
@@ -292,6 +423,13 @@ namespace wheel {
 
 				if (ec) {
 					//这地方不能删除conencts,应该直接通知发送错误
+					return;
+				}
+
+				//最好加锁着地方
+				while (data_lock_.test_and_set(std::memory_order_acquire));
+				if (send_buffers_.empty()) {
+					data_lock_.clear(std::memory_order_release);
 					return;
 				}
 
@@ -311,6 +449,8 @@ namespace wheel {
 						std::placeholders::_1, std::placeholders::_2));
 					++write_count_;
 				}
+
+				data_lock_.clear(std::memory_order_release);
 			}
 
 			void set_connect_status(int status) {
@@ -346,6 +486,7 @@ namespace wheel {
 			std::unique_ptr<char[]>recv_buffer_{};
 			int seconds_ = g_client_reconnect_seconds;//客户端设置重连
 			int parser_type_ =0; //后续扩展0:二进制流
+			std::atomic_flag data_lock_ = ATOMIC_FLAG_INIT;
 		};
 	}
 }

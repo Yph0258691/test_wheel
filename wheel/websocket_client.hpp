@@ -10,24 +10,37 @@ namespace wheel {
 		{
 		public:
 			//json 对象解析
-			webscoket_client(MessageEventObserver recv_observer)
-				:ios_(std::make_shared<boost::asio::io_service>()), recv_observer_(recv_observer) {
-				tcp_handler_ = std::make_shared<ws_tcp_handle>(ios_);
-				timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+			webscoket_client(const MessageEventObserver& recv_observer)
+				:recv_observer_(recv_observer) {
+				try{
+					ios_ = std::make_shared<boost::asio::io_service>();
+					tcp_handler_ = std::make_shared<ws_tcp_handle>(ios_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				}catch (const std::exception&ex){
+					std::cout << ex.what() << std::endl;
+				}
 			}
 
 			//bin 解析
-			webscoket_client(MessageEventObserver recv_observer,std::size_t header_size, std::size_t packet_size_offset, std::size_t packet_cmd_offse)
-				:ios_(std::make_shared<boost::asio::io_service>()), recv_observer_(recv_observer)
+			webscoket_client(const MessageEventObserver& recv_observer,std::size_t header_size, std::size_t packet_size_offset, std::size_t packet_cmd_offse)
+				:recv_observer_(recv_observer)
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
 				, packet_cmd_offset_(packet_cmd_offse) {
-				tcp_handler_ = std::make_shared<wheel::websocket::ws_tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
-				if (tcp_handler_ != nullptr) {
-					tcp_handler_->set_protocol_parse_type(0);
+				try
+				{
+					ios_ = std::make_shared<boost::asio::io_service>();
+					tcp_handler_ = std::make_shared<wheel::websocket::ws_tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				}catch (const std::exception&ex){
+					std::cout << ex.what() << std::endl;
 				}
 
-				timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				if (ios_ ==nullptr || tcp_handler_ ==nullptr || timer_ ==nullptr){
+					return;
+				}
+
+				tcp_handler_->set_protocol_parse_type(0);
 			}
 
 			~webscoket_client() {
@@ -122,9 +135,9 @@ namespace wheel {
 			bool reconnent_;
 			int parser_type_ = json;
 			MessageEventObserver recv_observer_;
-			std::shared_ptr<boost::asio::io_service>ios_;
-			std::shared_ptr<ws_tcp_handle> tcp_handler_ = nullptr;
-			std::unique_ptr<boost::asio::steady_timer> timer_;
+			std::shared_ptr<boost::asio::io_service>ios_{};
+			std::shared_ptr<ws_tcp_handle> tcp_handler_{};
+			std::unique_ptr<boost::asio::steady_timer> timer_{};
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
 			std::size_t packet_cmd_offset_ = 0;

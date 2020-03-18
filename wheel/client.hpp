@@ -8,29 +8,53 @@ namespace wheel {
 		class client
 		{
 		public:
-			client(MessageEventObserver recv_observer, int parser_type)
-				:ios_(std::make_shared<boost::asio::io_service>()), recv_observer_(recv_observer) {
-				tcp_handler_ = std::make_shared<tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
-
-				if (tcp_handler_ != nullptr) {
-					tcp_handler_->set_protocol_parse_type(parser_type);
+			client(const MessageEventObserver& recv_observer, int parser_type)
+				:recv_observer_(recv_observer) {
+				try{
+					ios_ = std::make_shared<boost::asio::io_service>();
+					tcp_handler_ = std::make_shared<tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				}catch (const std::exception&ex){
+					ios_ = nullptr;
+					tcp_handler_ = nullptr;
+					timer_ = nullptr;
+					std::cout << ex.what() << std::endl;
 				}
 
-				timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				if (ios_ ==nullptr || tcp_handler_ ==nullptr || timer_ ==nullptr){
+					return;
+				}
+
+				tcp_handler_->set_protocol_parse_type(parser_type);
 			}
 
-			client(MessageEventObserver recv_observer, int parser_type
+			client(const MessageEventObserver& recv_observer, int parser_type
 				, std::size_t header_size, std::size_t packet_size_offset, std::size_t packet_cmd_offse)
-				:ios_(std::make_shared<boost::asio::io_service>()), recv_observer_(recv_observer)
+				:recv_observer_(recv_observer)
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
 				, packet_cmd_offset_(packet_cmd_offse) {
-				tcp_handler_ = std::make_shared<tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
-				if (tcp_handler_ != nullptr) {
-					tcp_handler_->set_protocol_parse_type(parser_type);
+			
+				try
+				{
+					ios_ = std::make_shared<boost::asio::io_service>();
+					tcp_handler_ = std::make_shared<tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				}
+				catch (const std::exception&)
+				{
+					ios_ = nullptr;
+					tcp_handler_ = nullptr;
+					timer_ = nullptr;
+					std::cout << ex.what() << std::endl;
+				}
+			
+
+				if (ios_ == nullptr || tcp_handler_ == nullptr || timer_ == nullptr) {
+					return;
 				}
 
-				timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+				tcp_handler_->set_protocol_parse_type(parser_type);
 			}
 
 			~client() {
@@ -103,9 +127,9 @@ namespace wheel {
 		private:
 			bool reconnent_;
 			MessageEventObserver recv_observer_;
-			std::shared_ptr<boost::asio::io_service>ios_;
-			std::shared_ptr<tcp_handle> tcp_handler_ = nullptr;
-			std::unique_ptr<boost::asio::steady_timer> timer_;
+			std::shared_ptr<boost::asio::io_service>ios_{};
+			std::shared_ptr<tcp_handle> tcp_handler_{};
+			std::unique_ptr<boost::asio::steady_timer> timer_{};
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
 			std::size_t packet_cmd_offset_ = 0;

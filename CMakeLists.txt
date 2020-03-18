@@ -2,6 +2,12 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8) 
 #项目名 
 PROJECT(test_wheel)
+#设置安装路径
+SET(CMAKE_INSTALL_PREFIX "/home/test_wheel")
+# 版本号 1.0.1
+set (TEST_WHEEL_VERSION_MINOR 1)
+set (TEST_WHEEL_VERSION_MINOR 0)
+set (TEST_WHEEL_VERSION_MINOR 1)
 #设置C编辑器						
 SET(CMAKE_C_COMPILER gcc)
 #设置c++编辑器			
@@ -24,14 +30,17 @@ SET(LIBRARY_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/lib/")
 INCLUDE_DIRECTORIES($ENV{GSL_ROOT}/include /usr/local/include)
 #编译链接时能搜索到自己的库，上面生成的lib库在这里链接
 LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib/)
+
 #第三方库的lib
 INCLUDE_DIRECTORIES($ENV{GSL_ROOT}/lib/ /usr/lib/)
 	
-INCLUDE_DIRECTORIES(${PROJECT_ROOT_PATH}/)	
+INCLUDE_DIRECTORIES(${PROJECT_ROOT_PATH}/)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/game_logic)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party)
 INCLUDE_DIRECTORIES(.)
-
+#make install的时候。打包源文件
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/ DESTINATION include/third_party/ )
+install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
 #增加子文件
 ADD_SUBDIRECTORY(game_logic)
 ADD_SUBDIRECTORY(src)

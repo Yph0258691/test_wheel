@@ -1,15 +1,34 @@
 #Cmake最低版本要求
 CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0) 
 
-#项目名 
+#设置项目名 
 PROJECT(test_wheel)
 #安装路径写死
 #SET(CMAKE_INSTALL_PREFIX "/home/test_wheel")
-# 版本号 1.0.1
+
+#设置版本号 1.0.1
 set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
 set (VERSION_PATCH 1)
 
+#检测linux下c++编译版版本
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+
+  include(CheckCXXCompilerFlag)
+
+ foreach(cxx_feature_name "c++14" "c++1y" "c++11" "c++0x")
+    set(cxx_feature_flag "-std=${cxx_feature_name}")
+    string(REPLACE "+" "x" cxx_feature_suffix ${cxx_feature_name})
+    CHECK_CXX_COMPILER_FLAG(${cxx_feature_flag} COMPILER_SUPPORTS_${cxx_feature_suffix})
+    if(COMPILER_SUPPORTS_${cxx_feature_suffix})
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${cxx_feature_flag}")
+        message(STATUS "The compiler ${BUILDTOOL_PREFIX}-g++ has ${cxx_feature_name} support")
+        break()
+    endif()
+ endforeach()
+endif()
+
+#设置编译器格式
 if (MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O2 /bigobj")
 
@@ -41,7 +60,7 @@ else ()
 #设置c++编辑器			
    SET(CMAKiE_CXX_COMPILER g++)
 #设置C++编辑选项			
-   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g -Wall -fpic -fPIC -lpthread")
+   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread")
 #设置C++debug版本编辑选项 --D_DEBUG宏 --ggdb生成debug信息	
    SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")
 #设置C++release编辑选项 -02表示优化级别

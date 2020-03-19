@@ -11,6 +11,26 @@ set (VERSION_MINOR 0)
 set (VERSION_PATCH 1)
 
 if (MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O2 /bigobj")
+
+	# was causing conflics with gtest build
+	string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+
+	if ("${MSVC_RUNTIME_LIBRARY_CONFIG}" STREQUAL "")
+		set(MSVC_RUNTIME_LIBRARY_CONFIG "/MT")
+	endif ()
+
+	foreach (flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE)
+		if ("${MSVC_RUNTIME_LIBRARY_CONFIG}" STREQUAL "/MT")
+			string(REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+		elseif ("${MSVC_RUNTIME_LIBRARY_CONFIG}" STREQUAL "/MD")
+			string(REPLACE "/MT" "/MD" ${flag_var} "${${flag_var}}")
+		else ()
+			string(REPLACE "/MD" "${MSVC_RUNTIME_LIBRARY_CONFIG}" ${flag_var} "${${flag_var}}")
+			string(REPLACE "/MT" "${MSVC_RUNTIME_LIBRARY_CONFIG}" ${flag_var} "${${flag_var}}")
+		endif ()
+	endforeach ()
+	
     #增加宏定义
 	#add_definitions(-D_UNICODE)
 	#add_definitions(-DUNICODE)
@@ -28,11 +48,19 @@ else ()
    SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
 endif ()
 
+set(VALID_BUILD_TYPES "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+
 #默认开启Debug
 IF(NOT CMAKE_CONFIGURAITON_TYPES)
  IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
      set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build configuration" FORCE)
+	 message(FATAL_ERROR,"CMAKE_BUILD_TYPE FORCE SET Debug")
 	 ENDIF()
+ENDIF()
+
+#设置默认安装路径
+IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+message(FATAL_ERROR,"MAKE_INSTALL_PREFIX FORCE SET DEFAULT PATH")
 ENDIF()
 
 #预定义的宏

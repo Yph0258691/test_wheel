@@ -58,7 +58,7 @@ ENDIF()
 
 #提示默认安装路径
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-   message(FATAL_ERROR,"MAKE_INSTALL_PREFIX FORCE SET DEFAULT PATH")
+   message("Default Install prefix: ${CMAKE_INSTALL_PREFIX}")
 ENDIF()
 
 #预定义的宏
@@ -79,12 +79,12 @@ IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
   INCLUDE_DIRECTORIES($ENV{GSL_ROOT}/lib/ /usr/lib/)
 ENDIF() 
 
-set(Boost_USE_STATIC_LIBS ON) 
-set(Boost_USE_MULTITHREADED ON)  
-set(Boost_USE_STATIC_RUNTIME ON) 
-
 #windows下设置boost库的位置
 if (MSVC)
+  set(Boost_USE_STATIC_LIBS ON) 
+  set(Boost_USE_MULTITHREADED ON)  
+  set(Boost_USE_STATIC_RUNTIME ON) 
+
   set(BOOST_ROOT D:/project/C++Project/thirdpaty/boost)
   find_package(Boost) 
   if(Boost_FOUND)

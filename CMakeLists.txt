@@ -20,8 +20,6 @@ else ()
    SET(CMAKE_C_COMPILER gcc)
 #设置c++编辑器			
    SET(CMAKiE_CXX_COMPILER g++)
-#默认开启debug
-   set(CMAKE_BUILD_TYPE "Debug")
 #设置C++编辑选项			
    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g -Wall -fpic -fPIC -lpthread")
 #设置C++debug版本编辑选项 --D_DEBUG宏 --ggdb生成debug信息	
@@ -29,6 +27,13 @@ else ()
 #设置C++release编辑选项 -02表示优化级别
    SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
 endif ()
+
+#默认开启Debug
+IF(NOT CMAKE_CONFIGURAITON_TYPES)
+ IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
+     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build configuration" FORCE)
+	 ENDIF()
+ENDIF()
 
 #预定义的宏
 ADD_DEFINITIONS(-DPROTOBUF_INLINE_NOT_IN_HEADERS=0)  

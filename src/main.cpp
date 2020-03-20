@@ -33,6 +33,8 @@
 //}
 #include<iostream>
 #include<wheel/json.hpp>
+#include <config.h>
+
 struct person
 {
 	std::string  name;

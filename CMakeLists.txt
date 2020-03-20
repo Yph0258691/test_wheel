@@ -68,7 +68,7 @@ if (MSVC)
 	endforeach ()
 	
     #增加宏定义
-	#add_definitions(-D_UNICODE)
+	add_definitions(-DTEST)
 	#add_definitions(-DUNICODE)
 	#add_definitions(-DWIN32_LEAN_AND_MEAN)
 else ()
@@ -103,14 +103,17 @@ SET(EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin/")
 SET(LIBRARY_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/lib/")	
 #编译链接时能搜索到自己的库，上面生成的lib库在这里链接
 LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib/)
+set(CMAKE_PKGCONFIG_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}/pkgconfig)
 
 #增加宏定义，整个相关目录都支持
 #让开启整个项目宏
-option(TEST "Test" ON)
-configure_file (
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  option(TEST "Test" ON)
+  configure_file (
   "${PROJECT_SOURCE_DIR}/config.h.in"
-  "${PROJECT_SOURCE_DIR}/config.h"
+  "${CMAKE_PKGCONFIG_OUTPUT_DIRECTORY}/config.h"
   )
+endif()
   
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")	
   #第三方库搜索头文件
@@ -141,6 +144,12 @@ INCLUDE_DIRECTORIES(${PROJECT_ROOT_PATH}/)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/game_logic)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party)
 INCLUDE_DIRECTORIES(.)
+
+#linux下存宏定义
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+ INCLUDE_DIRECTORIES(${CMAKE_PKGCONFIG_OUTPUT_DIRECTORY})
+endif()
+
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/ DESTINATION include/third_party/ )
 install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
 #增加子文件

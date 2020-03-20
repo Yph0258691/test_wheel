@@ -59,6 +59,12 @@ REFLECTION(composit_t, a, b, c, d, e, f, g);
 
 int main()
 {
+#ifdef TEST
+	std::cout << "1123 test" << std::endl;
+#else
+	std::cout << "1123 no" << std::endl;
+#endif
+
 	auto const t = std::make_tuple(42, 'z', 3.14, 13, 0, "Hello, World!");
 
 	for (std::size_t i = 0; i < std::tuple_size<decltype(t)>::value; ++i) {

@@ -12,6 +12,7 @@ set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
 set (VERSION_PATCH 1)
 
+#通过开关设置debug还是release
 option (MAKE_RELEASE
        "Use provided  MAKE_RELEASE implementation" OFF)
 	   
@@ -137,7 +138,7 @@ if (MSVC)
 	IF(CMAKE_CL_64)
      LINK_DIRECTORIES(${Boost_LIBRARY_DIRS}/x64/) 
 	 else()
-	 LINK_DIRECTORIES(${Boost_LIBRARY_DIRS}/) 
+	 LINK_DIRECTORIES(${Boost_LIBRARY_DIRS}/x86/) 
 	endif()
   endif()
 endif()

@@ -1,9 +1,9 @@
 #Cmake最低版本要求
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10.0) 
+cmake_minimum_required(VERSION 3.10.0) 
 
 set(project_name test_wheel)
 #设置项目名 
-PROJECT(${project_name})
+project(${project_name})
 #安装路径写死
 #SET(CMAKE_INSTALL_PREFIX "/home/test_wheel")
 
@@ -19,19 +19,19 @@ set(CMAKE_DEPENDS_IN_PROJECT_ONLY ON)
 option (MAKE_RELEASE
        "Use provided  MAKE_RELEASE implementation" OFF)
 	   
-IF(MAKE_RELEASE)
- SET(CMAKE_BUILD_TYPE Release)
+if(MAKE_RELEASE)
+ set(CMAKE_BUILD_TYPE Release)
 else()
-  SET(CMAKE_BUILD_TYPE Debug)
-ENDIF()
+  set(CMAKE_BUILD_TYPE Debug)
+endif()
 
 #默认开启Debug
-IF(NOT CMAKE_CONFIGURAITON_TYPES)
- IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
+if(NOT CMAKE_CONFIGURAITON_TYPES)
+  IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
      set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build configuration" FORCE)
 	 message("-- CMAKE_BUILD_TYPE FORCE SET Debug")
-	 ENDIF()
-ENDIF()
+	 endif()
+endif()
 
 #检测linux下c++编译版版本
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
@@ -78,36 +78,36 @@ if (MSVC)
 	#add_definitions(-DWIN32_LEAN_AND_MEAN)
 else ()
   #设置c++编辑器	  
-  SET(CMAKiE_CXX_COMPILER g++)
+  set(CMAKiE_CXX_COMPILER g++)
     #设置C++编辑选项			
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread")
   
   if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     message("-- Debug mode")
 	#设置C++debug版本编辑选项 --D_DEBUG宏 --ggdb生成debug信息	
-   SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")
+   set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")
   else()
     message("-- Release mode")
 	#设置C++release编辑选项 -02表示优化级别
-   SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
+   set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
   endif()
 endif ()
 
 #提示默认安装路径
-IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
    message("-- Default Install prefix: ${CMAKE_INSTALL_PREFIX}")
-ENDIF()
+endif()
 
 #预定义的宏
-ADD_DEFINITIONS(-DPROTOBUF_INLINE_NOT_IN_HEADERS=0)  
+add_definitions(-DPROTOBUF_INLINE_NOT_IN_HEADERS=0)  
 #工程选项根目录，CMAKE_SOURCE_DIR为当前目录
-SET(PROJECT_ROOT_PATH "${CMAKE_SOURCE_DIR}/../")		
+set(PROJECT_ROOT_PATH "${CMAKE_SOURCE_DIR}/../")		
 #可执行文件生成位置
-SET(EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin/") 
+set(EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin/") 
 #库文件生成位置
-SET(LIBRARY_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/lib/")	
+set(LIBRARY_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/lib/")	
 #编译链接时能搜索到自己的库，上面生成的lib库在这里链接
-LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib/)
+link_directories(${CMAKE_SOURCE_DIR}/lib/)
 set(CMAKE_PKGCONFIG_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}/pkgconfig)
 
 #增加宏定义，整个相关目录都支持
@@ -121,12 +121,12 @@ set(CMAKE_PKGCONFIG_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}/pkgconfig)
   )
 #endif()
   
-IF (CMAKE_SYSTEM_NAME MATCHES "Linux")	
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")	
   #第三方库搜索头文件
-  INCLUDE_DIRECTORIES($ENV{GSL_ROOT}/include /usr/local/include)
+  include_directories($ENV{GSL_ROOT}/include /usr/local/include)
   #第三方库的lib
-  INCLUDE_DIRECTORIES($ENV{GSL_ROOT}/lib/ /usr/lib/)
-ENDIF() 
+  include_directories($ENV{GSL_ROOT}/lib/ /usr/lib/)
+endif() 
 
 #windows下设置boost库的位置
 if (MSVC)
@@ -137,31 +137,31 @@ if (MSVC)
   set(BOOST_ROOT D:/project/C++Project/thirdpaty/boost)
   find_package(Boost) 
   if(Boost_FOUND)
-    INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS}) 
+    include_directories(${Boost_INCLUDE_DIRS}) 
 	IF(CMAKE_CL_64)
-     LINK_DIRECTORIES(${Boost_LIBRARY_DIRS}/x64/) 
+     include_directories(${Boost_LIBRARY_DIRS}/x64/) 
 	 else()
-	 LINK_DIRECTORIES(${Boost_LIBRARY_DIRS}/x86/) 
+	 include_directories(${Boost_LIBRARY_DIRS}/x86/) 
 	endif()
   endif()
 endif()
 
-INCLUDE_DIRECTORIES(${PROJECT_ROOT_PATH}/)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/game_logic)
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party)
-INCLUDE_DIRECTORIES(.)
+include_directories(${PROJECT_ROOT_PATH}/)
+include_directories(${CMAKE_SOURCE_DIR}/game_logic)
+include_directories(${CMAKE_SOURCE_DIR}/third_party)
+include_directories(.)
 
 #linux下存宏定义
 #if(CMAKE_SYSTEM_NAME MATCHES "Linux")
- INCLUDE_DIRECTORIES(${CMAKE_PKGCONFIG_OUTPUT_DIRECTORY})
+ include_directories(${CMAKE_PKGCONFIG_OUTPUT_DIRECTORY})
 #endif()
 
 #安装相关库
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/ DESTINATION include/third_party/ )
 install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
 #增加子文件
-ADD_SUBDIRECTORY(game_logic)
-ADD_SUBDIRECTORY(src)
+add_subdirectory(game_logic)
+add_subdirectory(src)
 
 #放在install后的目的是,先编译install再执行package此地方要注意
 #包含此平台所有的东西
@@ -170,13 +170,13 @@ include (InstallRequiredSystemLibraries)
 set (CPACK_RESOURCE_FILE_LICENSE
   "${CMAKE_CURRENT_SOURCE_DIR}/License.txt")
 #判断系统平台
-IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
-	MESSAGE(STATUS "current platform: Linux ")
-ELSE()
-set(CPACK_GENERATOR NSIS)
-SET(CPACK_NSIS_MODIFY_PATH ON)
-	MESSAGE(STATUS "current platform: Windows")
-ENDIF() 
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+	message(STATUS "current platform: Linux ")
+else()
+   set(CPACK_GENERATOR NSIS)
+   set(CPACK_NSIS_MODIFY_PATH ON)
+   message(STATUS "current platform: Windows")
+endif() 
 
 #当前Cmakelist先生成pack文件夹
 set(CPACK_PACKAGE_DIRECTORY ${PROJECT_SOURCE_DIR}/pack)

@@ -12,6 +12,9 @@ set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
 set (VERSION_PATCH 1)
 
+#取消第三方库头文件进行依赖检查
+set(CMAKE_DEPENDS_IN_PROJECT_ONLY ON)
+
 #通过开关设置debug还是release
 option (MAKE_RELEASE
        "Use provided  MAKE_RELEASE implementation" OFF)
@@ -185,5 +188,14 @@ set(PROJECT_VERSION_FULL ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 #设置包的后缀名
 set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME ${PROJECT_NAME}-${PROJECT_VERSION_FULL})
+
+# 写入库的版本信息
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+        MyMathConfigVersion.cmake
+        VERSION ${PROJECT_VERSION_FULL}
+        COMPATIBILITY AnyNewerVersion  # 表示该函数库向下兼容
+        )
+
 #安装包
 include(CPack)

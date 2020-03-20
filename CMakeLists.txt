@@ -11,6 +11,14 @@ set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
 set (VERSION_PATCH 1)
 
+#默认开启Debug
+IF(NOT CMAKE_CONFIGURAITON_TYPES)
+ IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
+     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build configuration" FORCE)
+	 message("-- CMAKE_BUILD_TYPE FORCE SET Debug")
+	 ENDIF()
+ENDIF()
+
 #检测linux下c++编译版版本
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
 
@@ -22,7 +30,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     CHECK_CXX_COMPILER_FLAG(${cxx_feature_flag} COMPILER_SUPPORTS_${cxx_feature_suffix})
     if(COMPILER_SUPPORTS_${cxx_feature_suffix})
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${cxx_feature_flag}")
-        message(STATUS "The compiler ${BUILDTOOL_PREFIX}-g++ has ${cxx_feature_name} support")
+        message("-- The compiler ${BUILDTOOL_PREFIX}-g++ has ${cxx_feature_name} support")
         break()
     endif()
  endforeach()
@@ -55,29 +63,25 @@ if (MSVC)
 	#add_definitions(-DUNICODE)
 	#add_definitions(-DWIN32_LEAN_AND_MEAN)
 else ()
-#设置C编辑器						
-   SET(CMAKE_C_COMPILER gcc)
-#设置c++编辑器			
-   SET(CMAKiE_CXX_COMPILER g++)
-#设置C++编辑选项			
-   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread")
-#设置C++debug版本编辑选项 --D_DEBUG宏 --ggdb生成debug信息	
+  #设置c++编辑器	  
+  SET(CMAKiE_CXX_COMPILER g++)
+    #设置C++编辑选项			
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread")
+  
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    message("-- Debug mode")
+	#设置C++debug版本编辑选项 --D_DEBUG宏 --ggdb生成debug信息	
    SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")
-#设置C++release编辑选项 -02表示优化级别
+  else()
+    message("-- Release mode")
+	#设置C++release编辑选项 -02表示优化级别
    SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
+  endif()
 endif ()
-
-#默认开启Debug
-IF(NOT CMAKE_CONFIGURAITON_TYPES)
- IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
-     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build configuration" FORCE)
-	 message(FATAL_ERROR,"CMAKE_BUILD_TYPE FORCE SET Debug")
-	 ENDIF()
-ENDIF()
 
 #提示默认安装路径
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-   message("Default Install prefix: ${CMAKE_INSTALL_PREFIX}")
+   message("-- Default Install prefix: ${CMAKE_INSTALL_PREFIX}")
 ENDIF()
 
 #预定义的宏

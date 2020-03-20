@@ -107,9 +107,10 @@ LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib/)
 set(CMAKE_PKGCONFIG_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}/pkgconfig)
 
 #增加宏定义，整个相关目录都支持
-#让开启整个项目宏
+#增加整个项目宏
 #if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   option(TEST "Test" ON)
+  option(TEST1 "TEST1" ON)
   configure_file (
   "${PROJECT_SOURCE_DIR}/config.h.in"
   "${CMAKE_PKGCONFIG_OUTPUT_DIRECTORY}/config.h"

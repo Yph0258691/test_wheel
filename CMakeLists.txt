@@ -11,6 +11,15 @@ set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
 set (VERSION_PATCH 1)
 
+option (MAKE_RELEASE
+       "Use provided  MAKE_RELEASE implementation" OFF)
+	   
+IF(MAKE_RELEASE)
+ SET(CMAKE_BUILD_TYPE Release)
+else()
+  SET(CMAKE_BUILD_TYPE Debug)
+ENDIF()
+
 #默认开启Debug
 IF(NOT CMAKE_CONFIGURAITON_TYPES)
  IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
@@ -95,6 +104,14 @@ SET(LIBRARY_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/lib/")
 #编译链接时能搜索到自己的库，上面生成的lib库在这里链接
 LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/lib/)
 
+#增加宏定义，整个相关目录都支持
+#让开启整个项目宏
+option(TEST "Test" ON)
+configure_file (
+  "${PROJECT_SOURCE_DIR}/config.h.in"
+  "${PROJECT_SOURCE_DIR}/config.h"
+  )
+  
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")	
   #第三方库搜索头文件
   INCLUDE_DIRECTORIES($ENV{GSL_ROOT}/include /usr/local/include)

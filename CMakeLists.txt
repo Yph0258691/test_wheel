@@ -12,7 +12,7 @@ set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
 set (VERSION_PATCH 1)
 
-#取消第三方库头文件进行依赖检查
+#取消第三方库头文件进行依赖检查,liunx加快编译速度
 set(CMAKE_DEPENDS_IN_PROJECT_ONLY ON)
 
 #通过开关设置debug还是release
@@ -52,6 +52,10 @@ endif()
 
 #设置编译器格式
 if (MSVC)
+   if (MSVC_VERSION LESS 1900)
+     message("--- less vs2015 version")
+    endif()
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O2 /bigobj")
 
 	# was causing conflics with gtest build
@@ -79,6 +83,13 @@ if (MSVC)
 else ()
   #设置c++编辑器	  
   set(CMAKiE_CXX_COMPILER g++)
+
+  if(NOT CMAKE_SYSTEM_NAME MATCHES "Linux")
+    set(make_mode c++14)
+    message("-- set ${make_mode} make mode")
+    set(CMAKE_CXX_FLAGS -std=${make_mode})
+  endif()
+
     #设置C++编辑选项			
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread")
   
@@ -125,7 +136,7 @@ if (CMAKE_SYSTEM_NAME MATCHES "Linux")
   #第三方库搜索头文件
   include_directories($ENV{GSL_ROOT}/include /usr/local/include)
   #第三方库的lib
-  include_directories($ENV{GSL_ROOT}/lib/ /usr/lib/)
+  link_directories($ENV{GSL_ROOT}/lib/ /usr/lib/)
 endif() 
 
 #windows下设置boost库的位置

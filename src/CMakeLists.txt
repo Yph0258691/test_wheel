@@ -4,8 +4,11 @@ file(GLOB SOURCE_MAIN "./*.cpp")
 
 add_executable("${PROJECT_NAME}" ${SOURCE_MAIN})
 
-#可以解决vs链接问题
-TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic)
-link_directories("${PROJECT_NAME}"  ${LIBRARY_OUTPUT_PATH})
+#链接指定的静态库
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+  TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic ws2_32 wsock32)
+  else()
+   TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic)
+endif()
 
 install (TARGETS "${PROJECT_NAME}" DESTINATION bin) 

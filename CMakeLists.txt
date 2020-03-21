@@ -129,10 +129,11 @@ if (CMAKE_SYSTEM_NAME MATCHES "Linux")
 endif() 
 
 #windows下设置boost库的位置
-if (MSVC)
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
   set(Boost_USE_STATIC_LIBS ON) 
   set(Boost_USE_MULTITHREADED ON)  
   set(Boost_USE_STATIC_RUNTIME ON) 
+ # add_definitions(-D_WIN32_WINNT=0x0501)
 
   set(BOOST_ROOT D:/project/C++Project/thirdpaty/boost)
   find_package(Boost) 

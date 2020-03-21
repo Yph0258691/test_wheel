@@ -41,7 +41,7 @@ namespace wheel {
 					tcp_handler_ = std::make_shared<tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
 					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
 				}
-				catch (const std::exception&)
+				catch (const std::exception&ex)
 				{
 					ios_ = nullptr;
 					tcp_handler_ = nullptr;

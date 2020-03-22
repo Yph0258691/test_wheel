@@ -82,7 +82,7 @@ if (MSVC)
 	#add_definitions(-DWIN32_LEAN_AND_MEAN)
 else ()
   #设置c++编辑器	  
-  set(CMAKiE_CXX_COMPILER g++)
+  set(CMAKAE_CXX_COMPILER g++)
 
   if(NOT CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(make_mode c++14)

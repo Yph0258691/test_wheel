@@ -15,23 +15,29 @@ set (VERSION_PATCH 1)
 #取消第三方库头文件进行依赖检查,liunx加快编译速度
 set(CMAKE_DEPENDS_IN_PROJECT_ONLY ON)
 
-#通过开关设置debug还是release
-option (MAKE_RELEASE
-       "Use provided  MAKE_RELEASE implementation" OFF)
-	   
-if(MAKE_RELEASE)
- set(CMAKE_BUILD_TYPE Release)
+#输出编译器的类型
+if(CMAKE_CONFIGURATION_TYPES)
+    message("------Multi-configuration generator")
 else()
-  set(CMAKE_BUILD_TYPE Debug)
+    message("------Single-configuration generator")
 endif()
 
 #默认开启Debug
-if(NOT CMAKE_CONFIGURAITON_TYPES)
-  IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
-     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build configuration" FORCE)
-	 message("-- CMAKE_BUILD_TYPE FORCE SET Debug")
-	 endif()
+#liunx下是not,注意为空格式
+if(NOT CMAKE_BUILD_TYPE OR "${CMAKE_BUILD_TYPE}" MATCHES  "None" OR "${CMAKE_BUILD_TYPE}" MATCHES  " ")
+   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build configuration" FORCE)
+	 message("----CMAKE_BUILD_TYPE FORCE SET Debug")
+else()
+#校验
+   if("${CMAKE_BUILD_TYPE}" MATCHES  "Release" OR "${CMAKE_BUILD_TYPE}" MATCHES  "RelWithDebInfo" OR "${CMAKE_BUILD_TYPE}" MATCHES  "MinSizeRel" 
+   OR "${CMAKE_BUILD_TYPE}" MATCHES  "Debug")
+     set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+     message("----set CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")  
+  else()
+     message("----CMAKE_BUILD_TYPE is not right")  
+   endif()
 endif()
+
 
 #检测linux下c++编译版版本
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
@@ -93,7 +99,7 @@ else ()
     #设置C++编辑选项			
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread")
   
-  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+  if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
     message("-- Debug mode")
 	#设置C++debug版本编辑选项 --D_DEBUG宏 --ggdb生成debug信息	
    set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")

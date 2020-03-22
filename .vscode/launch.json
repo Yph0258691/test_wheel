@@ -8,7 +8,7 @@
             "name": "g++",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/test_demo.exe",
+            "program": "${workspaceFolder}/bin/test_wheel.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

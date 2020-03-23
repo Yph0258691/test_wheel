@@ -5,7 +5,7 @@ set(project_name test_wheel)
 #设置项目名 
 project(${project_name})
 #安装路径写死
-#SET(CMAKE_INSTALL_PREFIX "/home/test_wheel")
+#SET(CMAKE_INSTALL_PREFIX "D:/test_wheel/")
 
 #设置版本号 1.0.1
 set (VERSION_MAJOR 1)

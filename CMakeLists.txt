@@ -155,7 +155,8 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
   set(Boost_USE_STATIC_RUNTIME ON) 
  # add_definitions(-D_WIN32_WINNT=0x0501)
 
-  set(BOOST_ROOT D:/project/C++Project/thirdpaty/boost)
+  set(boost_lib_path "D:/project/C++Project/thirdpaty/boost")
+  set(BOOST_ROOT ${boost_lib_path})
   find_package(Boost) 
   if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS}) 
@@ -207,7 +208,9 @@ set(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
 #版本号
 set(PROJECT_VERSION_FULL ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 #设置包的后缀名
-set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
+#set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+set(CPACK_SOURCE_GENERATOR "TGZ:ZIP")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME ${PROJECT_NAME}-${PROJECT_VERSION_FULL})
 
 # 写入库的版本信息
@@ -220,3 +223,9 @@ write_basic_package_version_file(
 
 #安装包
 include(CPack)
+
+#新增测试
+include(CTest)
+#这运行起来会导致程序卡主
+add_test("test1" "${EXECUTABLE_OUTPUT_PATH}/${project_name}")
+

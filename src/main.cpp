@@ -5,8 +5,12 @@
 #include <wheel/server.hpp>
 #include"test.h"
 #include <nlohmann_json.hpp>
+#include<wheel/unit.hpp>
 int main()
 {
+	std::string str ="fe80::5079:92b2:9cbf:e719%11";
+
+	bool is = wheel::unit::ipV6_check(str);
 	try {
 		nlohmann::json js;
 		js["name"] = "123";

@@ -12,6 +12,24 @@
 
 namespace wheel {
 	namespace unit {
+
+#define PATTERN_IPV4   "^(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}$"
+		/* IPv6 pattern */
+#define PATTERN_IPV6   "^((([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:)|(([0-9A-Fa-f]{1,4}:)"  \
+                                       "{6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){5}(:[0-9A-Fa-f]{1,4}){1,2})|(([0-9A-Fa-f]{1,4}:)"  \
+                                       "{4}(:[0-9A-Fa-f]{1,4}){1,3})|(([0-9A-Fa-f]{1,4}:){3}(:[0-9A-Fa-f]{1,4}){1,4})|(([0-9A-Fa-f]"  \
+                                       "{1,4}:){2}(:[0-9A-Fa-f]{1,4}){1,5})|([0-9A-Fa-f]{1,4}:(:[0-9A-Fa-f]{1,4}){1,6})|(:(:[0-9A-Fa-f]"  \
+                                       "{1,4}){1,7})|(([0-9A-Fa-f]{1,4}:){6}(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}" \
+                                       "|2[0-4]\\d|25[0-5])){3})|(([0-9A-Fa-f]{1,4}:){5}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])" \
+                                       "(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9A-Fa-f]{1,4}:){4}(:[0-9A-Fa-f]{1,4})" \
+                                       "{0,1}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|" \
+                                       "(([0-9A-Fa-f]{1,4}:){3}(:[0-9A-Fa-f]{1,4}){0,2}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])" \
+                                       "(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(([0-9A-Fa-f]{1,4}:){2}(:[0-9A-Fa-f]{1,4})" \
+                                       "{0,3}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|" \
+                                       "([0-9A-Fa-f]{1,4}:(:[0-9A-Fa-f]{1,4}){0,4}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])" \
+                                       "(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(:(:[0-9A-Fa-f]{1,4})" \
+                                       "{0,5}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}))$"
+
 		static std::uint32_t float_to_uint32(float value)
 		{
 			return *(std::uint32_t*)(&value);
@@ -56,6 +74,10 @@ namespace wheel {
 
 		static void bubble_sort_big(int array[], int n)
 		{
+			if (array == nullptr || n<=1){
+				return;
+			}
+
 			bool flag = false;
 			for (int i = 1; i < n; i++) {
 				flag = false;
@@ -74,14 +96,14 @@ namespace wheel {
 			}
 		}
 
-		//¥”–°µΩ¥Û£¨≤Â»Î≈≈–Ú
+		//‰ªéÂ∞èÂà∞Â§ßÔºåÊèíÂÖ•ÊéíÂ∫è
 		static void insert_sort(int* arr, int n) {
 			int temp = -1;
 			for (int i = 1;i < n;++i) {
 				temp = arr[i];
 
 				int j = i - 1;
-				//¥”∫ÛÕ˘«∞∞·∂Ø ˝æ›
+				//‰ªéÂêéÂæÄÂâçÊê¨Âä®Êï∞ÊçÆ
 				for (;j >= 0;--j) {
 					if (arr[j] <= temp) {
 						break;
@@ -90,8 +112,38 @@ namespace wheel {
 					arr[j + 1] = arr[j];
 				}
 
-				//µ±«∞µƒ∫Û“ª∏ˆŒª÷√£¨∑≈»Î ˝æ›
+				//ÂΩìÂâçÁöÑÂêé‰∏Ä‰∏™‰ΩçÁΩÆÔºåÊîæÂÖ•Êï∞ÊçÆ
 				arr[j + 1] = temp;
+			}
+		}
+
+		//ÈÄâÊã©ÊéíÂ∫è
+		static void selection_sort(int* ptr, int len)
+		{
+			if (ptr == NULL || len <= 1) {
+				return;
+			}
+
+			int minindex = -1;
+			//iÊòØÊ¨°Êï∞Ôºå‰πüÂç≥ÊéíÂ•ΩÁöÑ‰∏™Êï∞;jÊòØÁªßÁª≠Êéí
+			for (int i = 0;i < len - 1;++i) {
+				minindex = i;
+				for (int j = i + 1;j < len;++j) {
+					//‰ªéÂ∞èÂà∞Â§ß
+					if (ptr[j] < ptr[minindex]) {
+						minindex = j;
+					}
+				}
+
+				//ËøôÈáå‰∏ÄÂÆöË¶ÅÂä†‰∏ä,ÊØîÂ¶Ç(5,8,5,2,9,2,1,10)
+				if (i == minindex) {
+					continue;
+				}
+
+				ptr[i] ^= ptr[minindex];
+				ptr[minindex] ^= ptr[i];
+				ptr[i] ^= ptr[minindex];
+
 			}
 		}
 
@@ -125,7 +177,7 @@ namespace wheel {
 			return value;
 		}
 
-		//µ•∏ˆtuple»•À˜“˝
+		//Âçï‰∏™tupleÂéªÁ¥¢Âºï
 		template <typename Tuple, typename F, std::size_t...Is>
 		void tuple_switch(const std::size_t i, Tuple&& t, F&& f, std::index_sequence<Is...>) {
 			[](...) {}(
@@ -143,7 +195,7 @@ namespace wheel {
 				std::make_index_sequence<N>{});
 		}
 
-		/********** π”√¿˝◊”********/
+		/**********‰ΩøÁî®‰æãÂ≠ê********/
 
 		//auto const t = std::make_tuple(42, 'z', 3.14, 13, 0, "Hello, World!");
 
@@ -168,7 +220,7 @@ namespace wheel {
 
 		template<typename F, typename...Ts, std::size_t...Is>
 		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, std::index_sequence<Is...>) {
-			//ƒ‰√˚ππ‘Ï∫Ø ˝µ˜”√
+			//ÂåøÂêçÊûÑÈÄ†ÂáΩÊï∞Ë∞ÉÁî®
 			[](...) {}(0,
 				((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 				);
@@ -180,7 +232,7 @@ namespace wheel {
 		}
 
 
-		/*************** π”√¡–◊”*****************/
+		/***************‰ΩøÁî®ÂàóÂ≠ê*****************/
 		//auto some = std::make_tuple("I am good", 255, 2.1);
 		//for_each_tuple(some, [](const auto& x, auto index) {
 		//	constexpr auto Idx = decltype(index)::value;
@@ -213,7 +265,20 @@ namespace wheel {
 
 		static 	bool ipAddr_check(const std::string& ip_addr_dot_format)
 		{
-			std::regex expression("((?:(?:25[0-5]|2[0-4]\\d|[01]?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d?\\d))");
+
+			std::regex expression(PATTERN_IPV4);
+			return (std::regex_match(ip_addr_dot_format, expression));
+
+			//std::regex expression("((?:(?:25[0-5]|2[0-4]\\d|[01]?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d?\\d))");
+			//return (std::regex_match(ip_addr_dot_format, expression));
+
+			//std::regex pattern(("((([01]?\\d\\d?)|(2[0-4]\\d)|(25[0-5]))\\.){3}(([01]?\\d\\d?)|(2[0-4]\\d)|(25[0-5]))"));
+			//return std::regex_match(ip_addr_dot_format, pattern);
+		}
+
+		static 	bool ipV6_check(const std::string& ip_addr_dot_format)
+		{
+			std::regex expression(PATTERN_IPV6);
 			return (std::regex_match(ip_addr_dot_format, expression));
 		}
 

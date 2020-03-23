@@ -17,10 +17,13 @@ set(CMAKE_DEPENDS_IN_PROJECT_ONLY ON)
 
 #输出编译器的类型
 if(CMAKE_CONFIGURATION_TYPES)
-    message("------Multi-configuration generator")
+    message("--Multi-configuration generator")
 else()
-    message("------Single-configuration generator")
+    message("----Single-configuration generator")
 endif()
+
+#输出安装目录
+message("----CMAKE_INSTALL_PREFIX is ${CMAKE_INSTALL_PREFIX}")
 
 #默认开启Debug
 #liunx下是not,注意为空格式

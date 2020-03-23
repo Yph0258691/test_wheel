@@ -103,11 +103,11 @@ else ()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread")
   
   if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
-    message("-- Debug mode")
+    message("-- CMAKE_BUILD_TYPE is  ${CMAKE_BUILD_TYPE} mode")
 	#设置C++debug版本编辑选项 --D_DEBUG宏 --ggdb生成debug信息	
-   set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")
+    set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -ggdb")
   else()
-    message("-- Release mode")
+    message("-- CMAKE_BUILD_TYPE is  ${CMAKE_BUILD_TYPE} mode")
 	#设置C++release编辑选项 -02表示优化级别
    set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
   endif()

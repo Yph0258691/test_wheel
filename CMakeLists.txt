@@ -225,7 +225,7 @@ write_basic_package_version_file(
 include(CPack)
 
 #新增测试
-include(CTest)
+#include(CTest)
 #这运行起来会导致程序卡主
-add_test("test1" "${EXECUTABLE_OUTPUT_PATH}/${project_name}")
+#dd_test("test1" "${EXECUTABLE_OUTPUT_PATH}/${project_name}")
 

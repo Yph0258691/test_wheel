@@ -6,7 +6,7 @@ add_executable("${PROJECT_NAME}" ${SOURCE_MAIN})
 
 #链接指定的静态库
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-  TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic ws2_32 wsock32)
+  TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic ws2_32 wsock32 libmysql)
   else()
    TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic)
 endif()

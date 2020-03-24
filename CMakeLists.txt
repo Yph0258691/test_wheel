@@ -126,8 +126,6 @@ set(PROJECT_ROOT_PATH "${CMAKE_SOURCE_DIR}/../")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin/") 
 #库文件生成位置
 set(LIBRARY_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/lib/")	
-#编译链接时能搜索到自己的库，上面生成的lib库在这里链接
-link_directories(${CMAKE_SOURCE_DIR}/lib/)
 set(CMAKE_PKGCONFIG_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}/pkgconfig)
 
 #增加宏定义，整个相关目录都支持
@@ -171,6 +169,14 @@ endif()
 include_directories(${PROJECT_ROOT_PATH}/)
 include_directories(${CMAKE_SOURCE_DIR}/game_logic)
 include_directories(${CMAKE_SOURCE_DIR}/third_party)
+include_directories(${CMAKE_SOURCE_DIR}/third_party/mysql)
+if(CMAKE_CL_64)
+  link_directories(${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64)
+ else()
+  link_directories(${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32)
+endif()
+  #编译链接时能搜索到自己的库，上面生成的lib库在这里链接
+link_directories(${CMAKE_SOURCE_DIR}/lib/)
 include_directories(.)
 
 #linux下存宏定义
@@ -181,6 +187,20 @@ include_directories(.)
 #安装相关库
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/ DESTINATION include/third_party/ )
 install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
+
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.so DESTINATION bin)
+  install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.so DESTINATION ${CMAKE_BINARY_DIR}/bin)
+else() 
+  if(CMAKE_CL_64)
+    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.dll DESTINATION bin)
+    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.dll DESTINATION ${CMAKE_BINARY_DIR}/bin)
+  else()
+    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32/libmysql.dll DESTINATION bin)
+    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32/libmysql.dll DESTINATION ${CMAKE_BINARY_DIR}/bin)
+  endif(CMAKE_CL_64)
+endif()
+
 #增加子文件
 add_subdirectory(game_logic)
 add_subdirectory(src)

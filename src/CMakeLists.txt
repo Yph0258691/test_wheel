@@ -8,7 +8,7 @@ add_executable("${PROJECT_NAME}" ${SOURCE_MAIN})
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
   TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic ws2_32 wsock32 libmysql)
   else()
-   TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic)
+   TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic libmysql)
 endif()
 
 install (TARGETS "${PROJECT_NAME}" DESTINATION bin) 

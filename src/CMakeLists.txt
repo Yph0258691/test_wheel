@@ -30,6 +30,7 @@ if(MSVC)
    set(shared_dll_path  ${EXECUTABLE_OUTPUT_PATH})
 endif(MSVC)
 
+#安装文件夹
 file(MAKE_DIRECTORY ${shared_dll_path})
 
 add_custom_target(CopyBinaries 

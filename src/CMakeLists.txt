@@ -41,12 +41,10 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
        #Output Message
        COMMENT "Copying shared dll binaries from '${dll_path}' to '${shared_dll_path}'" VERBATIM
    )
+
+    #和上一步骤合并一个步骤
+   add_dependencies(${project_name} CopyBinaries)
+
 endif(CMAKE_SYSTEM_NAME MATCHES "Windows")
-
-
-
-#和上一步骤合并一个步骤
-add_dependencies(${project_name} CopyBinaries)
-
 
 install (TARGETS "${PROJECT_NAME}" DESTINATION bin) 

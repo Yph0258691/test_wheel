@@ -34,12 +34,10 @@ endif(MSVC)
 file(MAKE_DIRECTORY ${shared_dll_path})
 
 add_custom_target(CopyBinaries 
-# todo: check if debug and release folder exist
-# debug version
-COMMAND ${CMAKE_COMMAND} -E copy ${dll_path} ${shared_dll_path}
+   COMMAND ${CMAKE_COMMAND} -E copy ${dll_path} ${shared_dll_path}
 
-# Output Message
-COMMENT "Copying shared dll binaries from '${dll_path}' to '${shared_dll_path}'" VERBATIM
+   #Output Message
+   COMMENT "Copying shared dll binaries from '${dll_path}' to '${shared_dll_path}'" VERBATIM
 )
 
 #和上一步骤合并一个步骤

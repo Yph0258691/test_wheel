@@ -139,6 +139,9 @@ set(CMAKE_PKGCONFIG_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}/pkgconfig)
   )
 #endif()
   
+#创建文件夹
+file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
+
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")	
   #第三方库搜索头文件
   include_directories($ENV{GSL_ROOT}/include /usr/local/include)

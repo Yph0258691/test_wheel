@@ -129,7 +129,7 @@ add_definitions(-DPROTOBUF_INLINE_NOT_IN_HEADERS=0)
 #工程选项根目录，CMAKE_SOURCE_DIR为当前目录
 set(PROJECT_ROOT_PATH "${CMAKE_SOURCE_DIR}/../")		
 #可执行文件生成位置
-set(EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin/") 
+set(EXECUTABLE_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/bin") 
 #库文件生成位置
 set(LIBRARY_OUTPUT_PATH "${CMAKE_SOURCE_DIR}/lib/")	
 set(CMAKE_PKGCONFIG_OUTPUT_DIRECTORY ${LIBRARY_OUTPUT_PATH}/pkgconfig)
@@ -198,16 +198,18 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/ DESTINATION include/third_par
 install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.so DESTINATION bin)
-  install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.so DESTINATION ${CMAKE_BINARY_DIR}/bin)
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.so DESTINATION bin)
+  else()
+    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32/libmysql.so DESTINATION bin)
+  endif()
+
 else() 
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.dll DESTINATION bin)
-    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.dll DESTINATION ${CMAKE_BINARY_DIR}/bin)
   #否则为4
   else()
     install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32/libmysql.dll DESTINATION bin)
-    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32/libmysql.dll DESTINATION ${CMAKE_BINARY_DIR}/bin)
   endif()
 endif()
 

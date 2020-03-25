@@ -393,6 +393,10 @@ namespace wheel {
 			//ָ������һ������
 			template<typename T, typename... Args>
 			constexpr int update(const T& t, Args&&... args) {
+				if(con_ == nullptr){
+					return =-1;
+				}
+
 				std::string sql = generate_insert_sql<T>(true);
 				return insert_aux(sql, t, std::forward<Args>(args)...);
 			}
@@ -400,6 +404,10 @@ namespace wheel {
 			//ָ������n������
 			template<typename T, typename... Args>
 			constexpr int update(const std::vector<T>& t, Args&&... args) {
+				if(con_ == nullptr){
+					return =-1;
+				}
+				
 				std::string sql = generate_insert_sql<T>(true);
 				return insert_aux(sql, t, std::forward<Args>(args)...);
 			}

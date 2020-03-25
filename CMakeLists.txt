@@ -184,27 +184,22 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8)
  else()
   link_directories(${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32)
 endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  #编译链接时能搜索到自己的库，上面生成的lib库在这里链接
+
+#编译链接时能搜索到自己的库，上面生成的lib库在这里链接
 link_directories(${CMAKE_SOURCE_DIR}/lib/)
 include_directories(.)
 
-#linux下存宏定义
-#if(CMAKE_SYSTEM_NAME MATCHES "Linux")
- include_directories(${CMAKE_PKGCONFIG_OUTPUT_DIRECTORY})
-#endif()
+include_directories(${CMAKE_PKGCONFIG_OUTPUT_DIRECTORY})
+
+#增加子文件
+add_subdirectory(game_logic)
+add_subdirectory(src)
 
 #安装相关库
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/ DESTINATION include/third_party/ )
 install(DIRECTORY ./wheel/ DESTINATION include/wheel/ )
 
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.so DESTINATION bin)
-  else()
-    install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32/libmysql.so DESTINATION bin)
-  endif()
-
-else() 
+if(CMAKE_SYSTEM_NAME MATCHES "Windows")
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/x64/libmysql.dll DESTINATION bin)
   #否则为4
@@ -212,10 +207,6 @@ else()
     install(FILES ${CMAKE_SOURCE_DIR}/third_party/mysql/lib/win32/libmysql.dll DESTINATION bin)
   endif()
 endif()
-
-#增加子文件
-add_subdirectory(game_logic)
-add_subdirectory(src)
 
 #放在install后的目的是,先编译install再执行package此地方要注意
 #包含此平台所有的东西

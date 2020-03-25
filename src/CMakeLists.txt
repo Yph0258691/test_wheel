@@ -30,15 +30,20 @@ if(MSVC)
    set(shared_dll_path  ${EXECUTABLE_OUTPUT_PATH})
 endif(MSVC)
 
-#安装文件夹
-file(MAKE_DIRECTORY ${shared_dll_path})
+#编译之后导入d11
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    #安装文件夹
+    file(MAKE_DIRECTORY ${shared_dll_path})
 
-add_custom_target(CopyBinaries 
-   COMMAND ${CMAKE_COMMAND} -E copy ${dll_path} ${shared_dll_path}
+    add_custom_target(CopyBinaries 
+      COMMAND ${CMAKE_COMMAND} -E copy ${dll_path} ${shared_dll_path}
 
-   #Output Message
-   COMMENT "Copying shared dll binaries from '${dll_path}' to '${shared_dll_path}'" VERBATIM
-)
+       #Output Message
+       COMMENT "Copying shared dll binaries from '${dll_path}' to '${shared_dll_path}'" VERBATIM
+   )
+endif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+
+
 
 #和上一步骤合并一个步骤
 add_dependencies(${project_name} CopyBinaries)

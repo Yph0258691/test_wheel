@@ -153,6 +153,10 @@ namespace wheel {
 			}
 		private:
 			void on_connect(std::shared_ptr<ws_tcp_handle> handler) {
+				if (handler == nullptr) {
+					return;
+				}
+
 				auto iter_find = connects_.find(handler);
 				if (iter_find != connects_.end()) {
 					return;

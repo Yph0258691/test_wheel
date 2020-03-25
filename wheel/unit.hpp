@@ -9,6 +9,8 @@
 #include <iomanip>
 #include <sstream>
 #include <tuple>
+#include <type_traits>
+#pragma warning(disable:4984)
 
 namespace wheel {
 	namespace unit {
@@ -41,6 +43,35 @@ namespace wheel {
 			std::stringstream stream(str);
 			stream >> res;
 			return res;
+		}
+
+		static std::uint32_t crc16(const char* data, unsigned short data_len_bit){
+			constexpr std::uint32_t crc16_poly = 0x1021; //   CRC_16У�鷽ʽ�Ķ���ʽ.   
+			std::uint32_t crc = 0;
+
+			// initialize crc little endian
+			*((char*)&crc) = *(data + 1);
+			*((char*)&crc + 1) = *data;
+
+			for (int i = 0;i < data_len_bit;i++) {
+				unsigned char temp = 0;
+				if (i < data_len_bit - 16) {
+					temp = *(data + 2 + (i >> 3)); // calculate the position of bit in which byte 
+				}
+
+				unsigned short bit_shift = 7 - (i % 8); // calculate bit shift of bit in the specified byte
+
+				if (crc >> 15)
+				{
+					crc = (crc << 1) | (temp >> bit_shift & 0x01); // shift crc one bit and fi ll in a data bit
+					crc ^= crc16_poly; // xor with poly equations.
+				}
+				else {
+					crc = (crc << 1) | (temp >> bit_shift & 0x01);
+				}
+			}
+
+			return crc;
 		}
 
 		static std::string to_string_with_precision(const float a_value, int precison)
@@ -96,14 +127,14 @@ namespace wheel {
 			}
 		}
 
-		//从小到大，插入排序
+		//��С���󣬲�������
 		static void insert_sort(int* arr, int n) {
 			int temp = -1;
 			for (int i = 1;i < n;++i) {
 				temp = arr[i];
 
 				int j = i - 1;
-				//从后往前搬动数据
+				//�Ӻ���ǰ�ᶯ����
 				for (;j >= 0;--j) {
 					if (arr[j] <= temp) {
 						break;
@@ -112,12 +143,12 @@ namespace wheel {
 					arr[j + 1] = arr[j];
 				}
 
-				//当前的后一个位置，放入数据
+				//��ǰ�ĺ�һ��λ�ã���������
 				arr[j + 1] = temp;
 			}
 		}
 
-		//选择排序
+		//ѡ������
 		static void selection_sort(int* ptr, int len)
 		{
 			if (ptr == NULL || len <= 1) {
@@ -125,17 +156,17 @@ namespace wheel {
 			}
 
 			int minindex = -1;
-			//i是次数，也即排好的个数;j是继续排
+			//i�Ǵ�����Ҳ���źõĸ���;j�Ǽ�����
 			for (int i = 0;i < len - 1;++i) {
 				minindex = i;
 				for (int j = i + 1;j < len;++j) {
-					//从小到大
+					//��С����
 					if (ptr[j] < ptr[minindex]) {
 						minindex = j;
 					}
 				}
 
-				//这里一定要加上,比如(5,8,5,2,9,2,1,10)
+				//����һ��Ҫ����,����(5,8,5,2,9,2,1,10)
 				if (i == minindex) {
 					continue;
 				}
@@ -177,7 +208,7 @@ namespace wheel {
 			return value;
 		}
 
-		//单个tuple去索引
+		//����tupleȥ����
 		template <typename Tuple, typename F, std::size_t...Is>
 		void tuple_switch(const std::size_t i, Tuple&& t, F&& f, std::index_sequence<Is...>) {
 			[](...) {}(
@@ -195,7 +226,7 @@ namespace wheel {
 				std::make_index_sequence<N>{});
 		}
 
-		/**********使用例子********/
+		/**********ʹ������********/
 
 		//auto const t = std::make_tuple(42, 'z', 3.14, 13, 0, "Hello, World!");
 
@@ -220,7 +251,7 @@ namespace wheel {
 
 		template<typename F, typename...Ts, std::size_t...Is>
 		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, std::index_sequence<Is...>) {
-			//匿名构造函数调用
+			//�������캯������
 			[](...) {}(0,
 				((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 				);
@@ -232,7 +263,7 @@ namespace wheel {
 		}
 
 
-		/***************使用列子*****************/
+		/***************ʹ������*****************/
 		//auto some = std::make_tuple("I am good", 255, 2.1);
 		//for_each_tuple(some, [](const auto& x, auto index) {
 		//	constexpr auto Idx = decltype(index)::value;
@@ -280,6 +311,30 @@ namespace wheel {
 		{
 			std::regex expression(PATTERN_IPV6);
 			return (std::regex_match(ip_addr_dot_format, expression));
+		}
+
+		template<typename T>
+		inline void append_impl(std::string& sql, const T& str) {
+			if constexpr (std::is_same<std::string, T>::value) {
+				if (str.empty())
+					return;
+			}
+			else {
+				if (sizeof(str) == 0) {
+					return;
+				}
+			}
+
+			sql += str;
+			sql += " ";
+		}
+
+		template<typename... Args>
+		inline void append(std::string& sql, Args&&... args) {
+			using expander = int[];
+			(void)expander {
+				((append_impl(sql, std::forward<Args>(args))), false)...
+			};
 		}
 
 		static void random_str(std::string& random_str, int len) {

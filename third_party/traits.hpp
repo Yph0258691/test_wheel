@@ -70,8 +70,15 @@ namespace wheel {
 		template <typename T, typename... Us>
 		struct has_type<T, std::tuple<Us...>> : disjunction<std::is_same<T, Us>...> {};
 
+		//c++17д��
+		//template <typename T, typename... Us>
+		//struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T, Us>...> {}
+
 		template<typename T>
 		constexpr bool  is_int64_v = std::is_same<T, int64_t>::value || std::is_same<T, uint64_t>::value;
+
+		template<class T>
+		constexpr bool is_char_array_v = std::is_array<T>::value && std::is_same<char, std::remove_pointer_t<std::decay_t<T>>>::value;
 	}//traits
 }//wheel
 

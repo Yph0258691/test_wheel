@@ -251,10 +251,23 @@ static auto reflector_reflect_members(ClassName const&) \
 		}
 
 		template<typename T>
+		constexpr const std::string get_name()
+		{
+			using M = decltype(reflector_reflect_members(std::declval<T>()));
+			return M::name();
+		}
+
+		template<typename T>
 		//等价c++17写法 std::enable_if_t<is_reflection<T>::value, size_t>::type
 		constexpr typename std::enable_if<is_reflection<T>::value, size_t>::type get_size() {
 			using M = decltype(reflector_reflect_members(std::declval<T>()));
 			return M::size();
+		}
+
+		template<typename T>
+		constexpr std::enable_if_t<!is_reflection<T>::value, size_t> get_size()
+		{
+			return 1;
 		}
 
 		template<typename T>
@@ -284,6 +297,23 @@ static auto reflector_reflect_members(ClassName const&) \
 			unit::for_each_tuple_back(M::apply_impl(), std::forward<F>(f), std::make_index_sequence<M::size()>{});
 		}
 
+		template <typename... Args, typename F, std::size_t... Idx>
+		constexpr void for_each(std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>){
+			using expander = int[];
+
+			(void)expander {
+				((std::forward<F>(f)(std::get<Idx>(t), std::integral_constant<size_t, Idx>{})), false)...
+			};
+		}
+
+		template <typename... Args, typename F, std::size_t... Idx>
+		constexpr void for_each(const std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>) {
+			using expander = int[];
+
+			(void)expander {
+				((std::forward<F>(f)(std::get<Idx>(t), std::integral_constant<size_t, Idx>{})), false)...
+			};
+		}
 
 		/*********************c++17写法***********************************/
 		//lambda函数

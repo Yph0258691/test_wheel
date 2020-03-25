@@ -108,10 +108,46 @@
 // }
 
 
+// #include <iostream>
+// #include <wheel/mysql_wrap.hpp>
+
+// int main()
+// {
+// 	wheel::mysql::mysql_wrap::get_intance().connect("127.0.0.1", "root", "root", "test",123);
+// }
+
 #include <iostream>
 #include <wheel/mysql_wrap.hpp>
 
+
+struct name {
+	std::string uer_name;
+	int age;
+};
+
+REFLECTION(name, uer_name, age)
+
 int main()
 {
-	wheel::mysql::mysql_wrap::get_intance().connect("127.0.0.1", "root", "root", "test",123);
+
+	std::vector<name>vec;
+	for (int i =0;i<2;++i){
+		name ns;
+		ns.age = 10;
+		ns.uer_name = "1245";
+		vec.emplace_back(ns);
+	}
+
+	wheel::mysql::mysql_wrap::get_intance().connect("127.0.0.1", "root", "root", "test");
+	//更新指定一条数据
+	//wheel::mysql::mysql_wrap::get_intance().update(ns);
+	//更新指定n条数据
+	wheel::mysql::mysql_wrap::get_intance().update(vec);
+	//wheel::mysql::mysql_wrap::get_intance().insert(vec);
+
+	//wheel::mysql::mysql_wrap::get_intance().delete_records<name>("age =20 and user_name =\"yph1111\"");
+	//auto result1 = wheel::mysql::mysql_wrap::get_intance().query<name>("age =10");
+	//auto result4 = wheel::mysql::mysql_wrap::get_intance().query<std::tuple<int>>("select count(1) from name");
+
+	//auto result5 = wheel::mysql::mysql_wrap::get_intance().query<std::tuple<std::string,int>>("select user_name, age from name");
 }

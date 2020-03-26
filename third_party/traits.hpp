@@ -79,6 +79,16 @@ namespace wheel {
 
 		template<class T>
 		constexpr bool is_char_array_v = std::is_array<T>::value && std::is_same<char, std::remove_pointer_t<std::decay_t<T>>>::value;
+
+		template<typename T>
+		struct is_string
+			: public disjunction<std::is_same<char*, typename std::decay<T>::type>,
+			std::is_same<const char*,typename std::decay<T>::type>,
+			std::is_same<std::string, typename std::decay<T>::type>
+			> {
+
+			};
+
 	}//traits
 }//wheel
 

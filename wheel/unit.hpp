@@ -242,10 +242,13 @@ namespace wheel {
 
 		template<typename F, typename...Ts, std::size_t...Is>
 		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func, std::index_sequence<Is...>) {
-			using expander = int[];
-			(void)expander {
-				((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
-			};
+			constexpr auto SIZE = std::tuple_size<std::remove_reference_t<decltype(tuple)>>::value;
+			if constexpr(SIZE >0){
+				using expander = int[];
+				(void)expander {
+					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
+				};
+			}
 		}
 
 		template<typename F, typename...Ts>
@@ -256,9 +259,12 @@ namespace wheel {
 		template<typename F, typename...Ts, std::size_t...Is>
 		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, std::index_sequence<Is...>) {
 			//匿名构造函数调用
-			[](...) {}(0,
-				((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
-				);
+			constexpr auto SIZE = std::tuple_size<std::remove_reference_t<decltype(tuple)>>::value;
+			if constexpr (SIZE >0){
+				[](...) {}(0,
+					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
+					);
+			}
 		}
 
 		template<typename F, typename...Ts>
@@ -266,6 +272,18 @@ namespace wheel {
 			for_each_tuple_back(tuple, func, std::make_index_sequence<sizeof...(Ts)>());
 		}
 
+		//单个参数传单个参数，没有index(tuple不能空)
+		template <typename... Args, typename F, std::size_t... Idx>
+		constexpr void for_each0(std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>) {
+			constexpr auto N = std::tuple_size <std::remove_reference_t<decltype(t)>>::value;
+
+			//编译器编译时，会做判断
+			if constexpr (N>0){
+				using expander = int[];
+				(void)expander {((std::forward<F>(f)(std::get<Idx>(t))), false)...};
+			}
+
+		}
 
 		/***************使用列子*****************/
 		//auto some = std::make_tuple("I am good", 255, 2.1);

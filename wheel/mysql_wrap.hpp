@@ -6,11 +6,10 @@
 #include <tuple>
 #include <memory>
 #include <mutex>
-#include "reflection.hpp"
 #include <sstream>
 #include <string>
-#include "unit.hpp"
 #include "query_result.hpp"
+#include "utility.hpp"
 
 #if _MSC_VER
 #pragma warning(disable:4984)
@@ -479,6 +478,18 @@ namespace wheel {
 				std::string sql = generate_insert_sql<T>(true);
 				return insert_aux(sql, t, std::forward<Args>(args)...);
 			}
+			//创建表
+			template<typename T,typename...Args>
+			constexpr bool create_table(Args&&... args) {
+				std::string sql = generate_createtb_sql<T>(std::forward<Args>(args)...);
+				sql += " DEFAULT CHARSET=utf8";
+				if (mysql_query(con_, sql.data())) {
+					err_ = mysql_error(con_);
+					return false;
+				}
+
+				return true;
+			}
 		private:
 			template<typename T, typename... Args>
 			constexpr int insert_aux(const std::string& sql, const std::vector<T>& t, Args&&... args) {
@@ -571,7 +582,6 @@ namespace wheel {
 				return sql;
 			}
 
-
 			template<typename T, typename... Args>
 			constexpr int insert_aux(const std::string& sql, const T& t, Args&&... args) {
 				stmt_ = mysql_stmt_init(con_);
@@ -596,57 +606,6 @@ namespace wheel {
 				return 1;
 			}
 
-			template<typename T>
-			inline std::string generate_insert_sql(bool update =false) {
-				std::string sql = update ? "replace into ":"insert into ";
-				const auto SIZE = wheel::reflector::get_size<T>();
-				const auto name = wheel::reflector::get_name<T>();
-				wheel::unit::append(sql, name.data(), " values(");
-				for (auto i = 0; i < SIZE; ++i) {
-					sql += "?";
-					if (i < SIZE - 1)
-						sql += ", ";
-					else
-						sql += ");";
-				}
-
-				return sql;
-			}
-
-			template<typename T>
-			inline constexpr auto to_str(T&& t) {
-				if constexpr (std::is_arithmetic<std::decay_t<T>>::value) {
-					return std::to_string(std::forward<T>(t));
-				}
-				else {
-					return std::string("'") + t + std::string("'");
-				}
-			}
-
-			template<typename... Args>
-			inline std::string get_sql(const std::string& str, Args&&... args) {
-				using expander = int[];
-				std::string sql = str;
-
-				(void)expander {
-					((get_str(sql,to_str(std::forward<Args>(args)))), false)...
-				};
-
-				return sql;
-			}
-
-			inline std::string get_sql(const std::string& str) {
-				std::string sql = str;
-
-				return sql;
-			}
-
-			inline void get_str(std::string& sql, const std::string& s) {
-				auto pos = sql.find_first_of('?');
-				sql.replace(pos, 1, " ");
-				sql.insert(pos, s);
-			}
-
 			struct guard_statment {
 				guard_statment(MYSQL_STMT* stmt) :stmt_(stmt) {}
 				MYSQL_STMT* stmt_ = nullptr;
@@ -662,52 +621,6 @@ namespace wheel {
 				}
 			};
 
-			template<typename T, typename... Args>
-			inline std::string generate_query_sql(Args&&... args) {
-				std::ostringstream os;
-				os << "select ";
-
-				const auto name = wheel::reflector::get_name<T>();
-				auto arr = wheel::reflector::get_array<T>();
-				int count = arr.size();
-				for (int index = 0;index < count;index++)
-				{
-					os << arr[index];
-					if (index < count - 1) {
-						os << ",";
-					}
-				}
-
-				os << " from ";
-				std::string sql = os.str();
-				wheel::unit::append(sql, name.data());
-				get_sql_conditions(sql, std::forward<Args>(args)...);
-				return sql;
-			}
-
-			inline void get_sql_conditions(std::string& sql) {
-			}
-
-			template<typename... Args>
-			inline void get_sql_conditions(std::string& sql, const std::string& arg, Args&&... args) {
-				if (arg.find("select") != std::string::npos) {
-					sql = arg;
-				}
-				else {
-					wheel::unit::append(sql,"where",arg, std::forward<Args>(args)...);
-				}
-			}
-
-			template<typename T, typename... Args>
-			inline std::string generate_delete_sql(Args&&... where_conditon) {
-				std::string sql = "delete from ";
-				const auto SIZE = wheel::reflector::get_size<T>();
-				const auto name = wheel::reflector::get_name<T>();
-				wheel::unit::append(sql, name.data());
-				wheel::unit::append(sql, " where ", std::forward<Args>(where_conditon)...);
-
-				return sql;
-			}
 		private:
 			mysql_wrap() = default;
 

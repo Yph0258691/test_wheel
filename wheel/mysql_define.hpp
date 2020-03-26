@@ -56,6 +56,96 @@ namespace wheel {
 			constexpr static const size_t value = value_of<T...>::value;// (wheel::reflector::get_size<T>() + ...);
 		};
 
+		enum  filedtype_t
+		{
+			CHAR = 1, INT = 2, DATETIME = 3, DOUBLE = 4, DEC = 5, UNKNOWN = 6, BIN
+		};
+
+		filedtype_t set_field_type(enum_field_types fieldtype)
+		{
+			filedtype_t type;
+			switch (fieldtype)
+			{
+			case MYSQL_TYPE_BLOB:
+				type = BIN;
+				break;
+			case MYSQL_TYPE_STRING:
+				//
+			case MYSQL_TYPE_VAR_STRING:
+				//
+			//case MYSQL_TYPE_TEXT:
+				//
+			case MYSQL_TYPE_SET:
+				//
+			case MYSQL_TYPE_GEOMETRY:
+				//
+			case MYSQL_TYPE_NULL:
+				type = CHAR;
+				break;
+			case MYSQL_TYPE_TINY:
+				//
+			case MYSQL_TYPE_SHORT:
+				//
+			case MYSQL_TYPE_LONG:
+				//
+			case MYSQL_TYPE_INT24:
+				//
+			case MYSQL_TYPE_BIT:
+				//
+			case MYSQL_TYPE_ENUM:
+				//
+			case MYSQL_TYPE_YEAR:
+			case MYSQL_TYPE_LONGLONG:
+				type = INT;
+				break;
+			case MYSQL_TYPE_DECIMAL:
+				//
+			case MYSQL_TYPE_NEWDECIMAL:
+				type = DEC;
+				break;
+			case MYSQL_TYPE_FLOAT:
+				//
+			case MYSQL_TYPE_DOUBLE:
+				type = DOUBLE;
+				break;
+			case MYSQL_TYPE_TIMESTAMP:
+				//
+			case MYSQL_TYPE_DATE:
+				//
+			case MYSQL_TYPE_TIME:
+				type = DATETIME;
+				break;
+			default:
+				type = UNKNOWN;
+				break;
+			}
+			return type;
+		}
+
+		struct typeset_t
+		{
+		public:
+			typeset_t() :type_(UNKNOWN), length_(0), index_(0) {}
+
+			typeset_t(filedtype_t type, unsigned int length, unsigned int index, const std::string& name)
+				:type_(type), length_(length), index_(index), name_(name)
+			{
+
+			}
+
+			filedtype_t type_;
+
+			unsigned int length_;
+
+			//查询列表中的列位置
+			unsigned int index_;
+
+			std::string name_;
+		};
+
+		typedef std::vector<typeset_t> field_t;
+
+		typedef std::vector<std::string> row_t;
 	}
 }//wheel
 

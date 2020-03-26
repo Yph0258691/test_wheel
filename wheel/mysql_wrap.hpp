@@ -10,15 +10,13 @@
 #include <sstream>
 #include <string>
 #include "unit.hpp"
-#include "mysql_define.hpp"
+#include "query_result.hpp"
 
 #if _MSC_VER
 #pragma warning(disable:4984)
 #else
 #pragma GCC system_header
 #endif
-
-
 namespace wheel {
 	namespace mysql {
 		class mysql_wrap {
@@ -44,6 +42,10 @@ namespace wheel {
 					mysql_close(con_);
 					con_ = nullptr;
 				}
+			}
+
+			std::string get_laster_error()const {
+				return err_;
 			}
 
 			/****** const char *host,
@@ -92,6 +94,7 @@ namespace wheel {
 				}
 
 				if (mysql_real_connect(con_, std::get<1>(tp), std::get<2>(tp), std::get<3>(tp), std::get<4>(tp), port, NULL, 0) == nullptr) {
+					err_ = mysql_error(con_);
 					disconnect();
 					return false;
 				}
@@ -119,22 +122,75 @@ namespace wheel {
 				return mysql_query(con_, "BEGIN") == 0 ? true : false;
 			}
 
-			//excute process or sql
+			//excute  sql
 			bool execute(const std::string& sql) {
 				if (con_ == nullptr) {
+					err_ = "SQL:=" + sql + ", ";
+					err_+= mysql_error(con_);
 					return false;
 				}
 
 				return mysql_query(con_, sql.data()) == 0 ? true : false;
 			}
 
-			const std::string& get_laster_error() {
-				if (con_ == nullptr) {
-					return "";
+			//根据SQL查询结果集去映射
+			  int query(std::string dml, query_result &qresult) {
+				  if (con_ == nullptr){
+					  return-1;
+				  }
+
+				if (mysql_query(con_, dml.c_str()) != 0){
+					err_ = "SQL:=" + dml + ", ";
+					err_ = mysql_error(con_);
+					return -1;
 				}
 
-				std::string str = mysql_error(con_);
-				return str;
+				do
+				{
+					MYSQL_RES* result = mysql_store_result(con_);
+					if (result == nullptr){
+						continue;
+					}
+
+					//指向  mysql 的查询字段集
+
+					//取得各字段名和类型
+					for (MYSQL_FIELD* fieldptr = mysql_fetch_field(result); fieldptr != nullptr; fieldptr = mysql_fetch_field(result)){
+						qresult.fieldtype_.emplace_back(set_field_type(fieldptr->type), fieldptr->length, qresult.fieldtype_.size(), fieldptr->name);
+					}
+
+					for (MYSQL_ROW currrow = mysql_fetch_row(result); currrow != nullptr; currrow = mysql_fetch_row(result))
+					{
+						unsigned long* lengths = mysql_fetch_lengths(result);
+
+						//读行的记录
+						const unsigned int colcount = mysql_num_fields(result);
+						row_t rows(colcount);
+						for (unsigned int i = 0; i < colcount; ++i){
+							if (qresult.fieldtype_[i].type_ == BIN)
+							{
+								if (lengths[i] > 0)
+								{
+									rows[i].resize(lengths[i]);
+									memcpy(&(*rows[i].begin()), currrow[i], lengths[i]);
+								}
+							}
+							else
+							{
+								rows[i] = currrow[i] ? currrow[i] : "";
+							}
+						}
+
+						qresult.recordset_.emplace_back(rows);
+						qresult.affected_rows_++;
+					}
+
+					mysql_free_result(result);
+
+					result = nullptr;
+				} while (!mysql_next_result(con_));
+
+				return 1;
 			}
 
 			//for tuple and string with args...,传入tuple进行解析
@@ -157,6 +213,7 @@ namespace wheel {
 					return {};
 				}
 				if (mysql_stmt_prepare(stmt_, sql.c_str(), (unsigned long)sql.size())) {
+					err_ = mysql_error(con_);
 					return {};
 				}
 
@@ -222,10 +279,12 @@ namespace wheel {
 					}, std::make_index_sequence<SIZE>{});
 
 				if (mysql_stmt_bind_result(stmt_, &param_binds[0])) {
+					err_ = mysql_error(con_);
 					return {};
 				}
 
 				if (mysql_stmt_execute(stmt_)) {
+					err_ = mysql_error(con_);
 					return {};
 				}
 
@@ -272,10 +331,12 @@ namespace wheel {
 
 				stmt_ = mysql_stmt_init(con_);
 				if (!stmt_) {
+					err_ = mysql_error(con_);
 					return {};
 				}
 
 				if (mysql_stmt_prepare(stmt_, sql.c_str(), (unsigned long)sql.size())) {
+					err_ = mysql_error(con_);
 					return {};
 				}
 
@@ -318,10 +379,12 @@ namespace wheel {
 				}
 
 				if (mysql_stmt_bind_result(stmt_, &param_binds[0])) {
+					err_ = mysql_error(con_);
 					return {};
 				}
 
 				if (mysql_stmt_execute(stmt_)) {
+					err_ = mysql_error(con_);
 					return {};
 				}
 
@@ -388,7 +451,7 @@ namespace wheel {
 			constexpr bool delete_records(Args&&... where_conditon) {
 				auto sql = generate_delete_sql<T>(std::forward<Args>(where_conditon)...);
 				if (mysql_query(con_, sql.data())) {
-					fprintf(stderr, "%s\n", mysql_error(con_));
+					err_ = mysql_error(con_);
 					return false;
 				}
 
@@ -420,10 +483,14 @@ namespace wheel {
 			template<typename T, typename... Args>
 			constexpr int insert_aux(const std::string& sql, const std::vector<T>& t, Args&&... args) {
 				stmt_ = mysql_stmt_init(con_);
-				if (!stmt_)
+				if (!stmt_) {
+					err_ = mysql_error(con_);
 					return INT_MIN;
+				}
+
 
 				if (mysql_stmt_prepare(stmt_, sql.c_str(), (int)sql.size())) {
+					err_ = mysql_error(con_);
 					return INT_MIN;
 				}
 
@@ -477,16 +544,18 @@ namespace wheel {
 					});
 
 				if (mysql_stmt_bind_param(stmt_, &param_binds[0])) {
+					err_ = mysql_error(con_);
 					return INT_MIN;
 				}
 
 				if (mysql_stmt_execute(stmt_)) {
-					fprintf(stderr, "%s\n", mysql_error(con_));
+					err_ = mysql_error(con_);
 					return INT_MIN;
 				}
 
 				int count = (int)mysql_stmt_affected_rows(stmt_);
 				if (count == 0) {
+					err_ = mysql_error(con_);
 					return INT_MIN;
 				}
 
@@ -506,17 +575,23 @@ namespace wheel {
 			template<typename T, typename... Args>
 			constexpr int insert_aux(const std::string& sql, const T& t, Args&&... args) {
 				stmt_ = mysql_stmt_init(con_);
-				if (!stmt_)
+				if (!stmt_) {
+					err_ = mysql_error(con_);
 					return INT_MIN;
+				}
+
 
 				if (mysql_stmt_prepare(stmt_, sql.c_str(), (int)sql.size())) {
+					err_ = mysql_error(con_);
 					return INT_MIN;
 				}
 
 				auto guard = guard_statment(stmt_);
 
-				if (stmt_execute(t) < 0)
+				if (stmt_execute(t) < 0) {
+					err_ = mysql_error(con_);
 					return INT_MIN;
+				}
 
 				return 1;
 			}
@@ -577,8 +652,10 @@ namespace wheel {
 				MYSQL_STMT* stmt_ = nullptr;
 				int status_ = 0;
 				~guard_statment() {
-					if (stmt_ != nullptr)
+					if (stmt_ != nullptr) {
 						status_ = mysql_stmt_close(stmt_);
+					}
+
 
 					if (status_)
 						fprintf(stderr, "close statment error code %d\n", status_);
@@ -643,10 +720,12 @@ namespace wheel {
 			static std::unique_ptr<mysql_wrap> instance_;
 			MYSQL* con_ = nullptr;
 			MYSQL_STMT* stmt_ = nullptr;
+
+			//错误原因
+			std::string err_;
 		};
 
 		std::unique_ptr<mysql_wrap> mysql_wrap::instance_;
-
 	}
 }//wheel
 #endif // mysql_wrap_h__

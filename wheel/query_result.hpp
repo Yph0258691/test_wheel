@@ -34,22 +34,23 @@ namespace wheel {
 				return index;
 			}
 
-			const std::string& get_item_value(unsigned long row, unsigned int index)const {
-				if (recordset_.size() <= row || fieldtype_.size() <= index)
-				{
-					throw std::out_of_range("ASSERT(recordset_.size() <= row || fieldtype_.size() <= index) ");
+			const std::string get_item_value(unsigned long row, unsigned int index)const {
+				std::string str;
+				if (recordset_.size() > row || fieldtype_.size() > index){
+					str = recordset_[row][index];
 				}
 
-				return recordset_[row][index];
+				return std::move(str);
 			}
 
-			const std::string& get_item_value(unsigned long row, const std::string& fieldname)const {
+			const std::string get_item_value(unsigned long row, const std::string& fieldname)const {
+				std::string str;
 				const std::size_t index = get_field_index(fieldname);
-				if (index == fieldtype_.size()) {
-					"";
+				if (index != fieldtype_.size()) {
+					str = get_item_value(row, index);
 				}
 
-				return get_item_value(row, index);
+				return std::move(str);
 			}
 
 			//得到指定行某个字段的字符串类型值

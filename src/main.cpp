@@ -233,9 +233,12 @@ int main()
 
 	//wheel::mysql::mysql_wrap::get_intance().create_table<user>();
 	wheel::mysql::wheel_sql_auto_key key1("id");
-	wheel::mysql::wheel_sql_not_null key2("id");
+	//wheel::mysql::wheel_sql_not_null key2;
+	//key2.set("id");
 
-	wheel::mysql::mysql_wrap::get_intance().create_table<user>( key1,key2);
+	wheel::mysql::wheel_sql_not_null key2{ {"id"} };
+
+	wheel::mysql::mysql_wrap::get_intance().create_table<user>(key2);
 
 	//更新指定一条数据
 	//wheel::mysql::mysql_wrap::get_intance().update(ns);
@@ -256,4 +259,5 @@ int main()
 
 	//auto result5 = wheel::mysql::mysql_wrap::get_intance().query<std::tuple<std::string,int>>("select user_name, age from name");
 }
+
 

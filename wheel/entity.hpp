@@ -10,19 +10,20 @@
 namespace wheel {
 	namespace mysql {
 		struct wheel_sql_not_null {
-			template<typename...Args>
-			wheel_sql_not_null(Args&&... args) {
-				static_assert(sizeof...(args) >0, "args >0");
-				auto tp = std::make_tuple(std::forward<Args>(args)...);
+			//代码故意不删除，血的教训，构造函数不能不能为变长参数，否则程序直接栈溢出
+			//template<typename...Args>
+			//wheel_sql_not_null(Args&&... args) {
+			//	static_assert(sizeof...(args) > 0, "args >0");
+			//	auto tp = std::make_tuple(std::forward<Args>(args)...);
 
-				constexpr auto SIZE = std::tuple_size<decltype(tp)>::value;
+			//	constexpr auto SIZE = std::tuple_size<decltype(tp)>::value;
 
-				wheel::unit::for_each_tuple_back(tp, [this](auto& item, auto index) {
-					if constexpr(wheel::traits::is_string<decltype(item)>::value){
-						fields.emplace(item);
-					}
-					}, std::make_index_sequence<SIZE>{});
-			}
+			//	wheel::unit::for_each_tuple_back(tp, [this](auto& item, auto index) {
+			//		if constexpr (wheel::traits::is_string<decltype(item)>::value) {
+			//			fields.emplace(item);
+			//		}
+			//		}, std::make_index_sequence<SIZE>{});
+			//}
 
 			std::set<std::string> fields;
 		};

@@ -106,7 +106,6 @@ namespace wheel {
 			}
 
 			ws_frame_type parse_payload(const char* buf, size_t size, std::string& outbuf) {
-				const unsigned char* inp = (const unsigned char*)(buf);
 				if (payload_length_ > size)
 					return ws_frame_type::WS_INCOMPLETE_FRAME;
 

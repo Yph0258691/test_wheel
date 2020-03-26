@@ -11,7 +11,12 @@
 #include <string>
 #include "unit.hpp"
 #include "mysql_define.hpp"
+
+#if _MSC_VER
 #pragma warning(disable:4984)
+#else
+#pragma GCC system_header
+#endif
 
 
 namespace wheel {
@@ -132,7 +137,7 @@ namespace wheel {
 				return str;
 			}
 
-			//for tuple and string with args...,����tuple���н���
+			//for tuple and string with args...,传入tuple进行解析
 			template<typename T, typename Arg, typename... Args>
 			constexpr std::enable_if_t<!wheel::reflector::is_reflection_v<T>, std::vector<T>> query(const Arg& s, Args&&... args) {
 				constexpr auto SIZE = std::tuple_size<T>::value;
@@ -390,7 +395,7 @@ namespace wheel {
 				return true;
 			}
 
-			//ָ������һ������
+			//指定更新一条数据
 			template<typename T, typename... Args>
 			constexpr int update(const T& t, Args&&... args) {
 				if(con_ == nullptr){
@@ -401,7 +406,7 @@ namespace wheel {
 				return insert_aux(sql, t, std::forward<Args>(args)...);
 			}
 
-			//ָ������n������
+			//指定更新n条数据
 			template<typename T, typename... Args>
 			constexpr int update(const std::vector<T>& t, Args&&... args) {
 				if(con_ == nullptr){
@@ -612,7 +617,7 @@ namespace wheel {
 					sql = arg;
 				}
 				else {
-					wheel::unit::append(sql, arg, std::forward<Args>(args)...);
+					wheel::unit::append(sql,"where",arg, std::forward<Args>(args)...);
 				}
 			}
 

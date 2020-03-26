@@ -10,7 +10,11 @@
 #include <sstream>
 #include <tuple>
 #include <type_traits>
+#if _MSC_VER
 #pragma warning(disable:4984)
+#else
+#pragma GCC system_header
+#endif
 
 namespace wheel {
 	namespace unit {
@@ -46,7 +50,7 @@ namespace wheel {
 		}
 
 		static std::uint32_t crc16(const char* data, unsigned short data_len_bit){
-			constexpr std::uint32_t crc16_poly = 0x1021; //   CRC_16У�鷽ʽ�Ķ���ʽ.   
+			constexpr std::uint32_t crc16_poly = 0x1021; //   CRC_16校验方式的多项式.   
 			std::uint32_t crc = 0;
 
 			// initialize crc little endian
@@ -127,14 +131,14 @@ namespace wheel {
 			}
 		}
 
-		//��С���󣬲�������
+		//从小到大，插入排序
 		static void insert_sort(int* arr, int n) {
 			int temp = -1;
 			for (int i = 1;i < n;++i) {
 				temp = arr[i];
 
 				int j = i - 1;
-				//�Ӻ���ǰ�ᶯ����
+				//从后往前搬动数据
 				for (;j >= 0;--j) {
 					if (arr[j] <= temp) {
 						break;
@@ -143,12 +147,12 @@ namespace wheel {
 					arr[j + 1] = arr[j];
 				}
 
-				//��ǰ�ĺ�һ��λ�ã���������
+				//当前的后一个位置，放入数据
 				arr[j + 1] = temp;
 			}
 		}
 
-		//ѡ������
+		//选择排序
 		static void selection_sort(int* ptr, int len)
 		{
 			if (ptr == NULL || len <= 1) {
@@ -156,17 +160,17 @@ namespace wheel {
 			}
 
 			int minindex = -1;
-			//i�Ǵ�����Ҳ���źõĸ���;j�Ǽ�����
+			//i是次数，也即排好的个数;j是继续排
 			for (int i = 0;i < len - 1;++i) {
 				minindex = i;
 				for (int j = i + 1;j < len;++j) {
-					//��С����
+					//从小到大
 					if (ptr[j] < ptr[minindex]) {
 						minindex = j;
 					}
 				}
 
-				//����һ��Ҫ����,����(5,8,5,2,9,2,1,10)
+				//这里一定要加上,比如(5,8,5,2,9,2,1,10)
 				if (i == minindex) {
 					continue;
 				}
@@ -208,7 +212,7 @@ namespace wheel {
 			return value;
 		}
 
-		//����tupleȥ����
+		//单个tuple去索引
 		template <typename Tuple, typename F, std::size_t...Is>
 		void tuple_switch(const std::size_t i, Tuple&& t, F&& f, std::index_sequence<Is...>) {
 			[](...) {}(
@@ -226,7 +230,7 @@ namespace wheel {
 				std::make_index_sequence<N>{});
 		}
 
-		/**********ʹ������********/
+		/**********使用例子********/
 
 		//auto const t = std::make_tuple(42, 'z', 3.14, 13, 0, "Hello, World!");
 
@@ -251,7 +255,7 @@ namespace wheel {
 
 		template<typename F, typename...Ts, std::size_t...Is>
 		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, std::index_sequence<Is...>) {
-			//�������캯������
+			//匿名构造函数调用
 			[](...) {}(0,
 				((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 				);
@@ -263,7 +267,7 @@ namespace wheel {
 		}
 
 
-		/***************ʹ������*****************/
+		/***************使用列子*****************/
 		//auto some = std::make_tuple("I am good", 255, 2.1);
 		//for_each_tuple(some, [](const auto& x, auto index) {
 		//	constexpr auto Idx = decltype(index)::value;

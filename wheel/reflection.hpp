@@ -171,7 +171,6 @@ static auto reflector_reflect_members(ClassName const&) \
         constexpr decltype(auto) static apply_impl(){\
             return std::make_tuple(expand_marco(concat_a_b(For_,N)(address_macro,ClassName,__VA_ARGS__)));\
         }\
-        using type = void;\
         static std::string name() \
         { \
             return #ClassName ; \
@@ -208,12 +207,12 @@ static auto reflector_reflect_members(ClassName const&) \
 
 		template<typename T>
 		constexpr auto get_array() {
-			//std::declval Ä£°åÍÆµ¼
+			//std::declval æ¨¡æ¿æ¨å¯¼
 			using M = decltype(reflector_reflect_members(std::declval<T>()));
 			return M::arr();
 		}
 
-		//»ñÈ¡½á¹¹ÌåµÄÖµ
+		//è·å–ç»“æ„ä½“çš„å€¼
 		template<size_t I, typename T>
 		constexpr decltype(auto) get(T&& t) {
 			using M = decltype(reflector_reflect_members(std::forward<T>(t)));
@@ -258,7 +257,7 @@ static auto reflector_reflect_members(ClassName const&) \
 		}
 
 		template<typename T>
-		//µÈ¼Ûc++17Ğ´·¨ std::enable_if_t<is_reflection<T>::value, size_t>::type
+		//ç­‰ä»·c++17å†™æ³• std::enable_if_t<is_reflection<T>::value, size_t>::type
 		constexpr typename std::enable_if<is_reflection<T>::value, size_t>::type get_size() {
 			using M = decltype(reflector_reflect_members(std::declval<T>()));
 			return M::size();
@@ -279,12 +278,12 @@ static auto reflector_reflect_members(ClassName const&) \
 				return (str == name);
 				});
 
-			//µü´úÆ÷×ªÏÂ±í
+			//è¿­ä»£å™¨è½¬ä¸‹è¡¨
 			return std::distance(arr.begin(), it);
 		}
 
-		//¿ÉÓÃÊı×éÕ¹¿ªÑ­»·
-		//Ò²¿ÉÒÔº¯Êıµİ¹éµÄĞÎÊ½
+		//å¯ç”¨æ•°ç»„å±•å¼€å¾ªç¯
+		//ä¹Ÿå¯ä»¥å‡½æ•°é€’å½’çš„å½¢å¼
 		template<typename T, typename F>
 		void  for_each_tuple_front(T&& t, F&& f) {
 			using M = decltype(reflector_reflect_members(std::forward<T>(t)));
@@ -315,15 +314,15 @@ static auto reflector_reflect_members(ClassName const&) \
 			};
 		}
 
-		/*********************c++17Ğ´·¨***********************************/
-		//lambdaº¯Êı
+		/*********************c++17å†™æ³•***********************************/
+		//lambdaå‡½æ•°
 		//template <typename... Args, typename F, std::size_t... Idx>
 		//constexpr void for_each(const std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>)
 		//{
 		     //(std::forward<F>(f)(std::get<Idx>(t), std::integral_constant<size_t, Idx>{}), ...);
 		//}
 
-		////¼ÓÈëº¯Êı
+		////åŠ å…¥å‡½æ•°
 		//template<typename T, typename F>
 		//constexpr void  for_each(T&& t, F&& f) {
 		//	using M = decltype(reflector_reflect_members(std::forward<T>(t)));

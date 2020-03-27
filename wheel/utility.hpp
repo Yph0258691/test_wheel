@@ -4,6 +4,12 @@
 #include "entity.hpp"
 #include "reflection.hpp"
 
+#if _MSC_VER
+#pragma warning(disable:4984)
+#else
+#pragma GCC system_header
+#endif
+
 namespace wheel {
 	namespace mysql {
 		template<typename T>

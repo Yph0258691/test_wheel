@@ -242,7 +242,14 @@ set(CPACK_GENERATOR "ZIP;TGZ")
 #在linux下新增这两种安装包
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   list(APPEND CPACK_GENERATOR "DEB")
+  #公司或者作者i名
+  set(CPACK_DEBIAN_PACKAGE_MAINTAINER "yinpinghua")
+  set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
+
   list(APPEND CPACK_GENERATOR "RPM")
+  #版本号
+  set(CPACK_RPM_PACKAGE_RELEASE "1")
+  set(CPACK_RPM_PACKAGE_LICENSE "MIT")
  endif()
 
 # 写入库的版本信息

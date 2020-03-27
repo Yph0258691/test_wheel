@@ -171,6 +171,7 @@ static auto reflector_reflect_members(ClassName const&) \
         constexpr decltype(auto) static apply_impl(){\
             return std::make_tuple(expand_marco(concat_a_b(For_,N)(address_macro,ClassName,__VA_ARGS__)));\
         }\
+       using type = void;\
         static std::string name() \
         { \
             return #ClassName ; \
@@ -266,6 +267,7 @@ static auto reflector_reflect_members(ClassName const&) \
 		template<typename T>
 		constexpr std::enable_if_t<!is_reflection<T>::value, size_t> get_size()
 		{
+			std::cout << "reflect is error" << std::endl;
 			return 1;
 		}
 
@@ -331,4 +333,4 @@ static auto reflector_reflect_members(ClassName const&) \
 
 	}
 }
-#endif // reflection_h__
+#endif // reflection_h__

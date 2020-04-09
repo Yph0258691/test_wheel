@@ -100,7 +100,11 @@ else ()
   endif()
 
     #设置C++编辑选项			
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread -lboost_filesystem -luuid ")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread -luuid ")
+
+  if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lboost_filesystem")
+  endif()
   
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")

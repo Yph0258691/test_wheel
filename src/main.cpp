@@ -28,7 +28,7 @@
 //  	Test t;
 //  	t.display();
 //  	ProxyEngine eng;
-// 	std::shared_ptr<wheel::tcp_socket::server> ptr = std::make_shared<wheel::tcp_socket::server>(std::bind(&ProxyEngine::OnMessage, &eng, std::placeholders::_1, std::placeholders::_2), 0, 8, 2, 6); //åç§»åçš„å€¼
+// 	std::shared_ptr<wheel::tcp_socket::server> ptr = std::make_shared<wheel::tcp_socket::server>(std::bind(&ProxyEngine::OnMessage, &eng, std::placeholders::_1, std::placeholders::_2), 0, 8, 2, 6); //Æ«ÒÆºóµÄÖµ
 
 //  	ptr->init(9000, 4);
 
@@ -139,9 +139,9 @@
 // 	}
 
 // 	wheel::mysql::mysql_wrap::get_intance().connect("127.0.0.1", "root", "root", "test");
-// 	//æ›´æ–°æŒ‡å®šä¸€æ¡æ•°æ®
+// 	//¸üĞÂÖ¸¶¨Ò»ÌõÊı¾İ
 // 	//wheel::mysql::mysql_wrap::get_intance().update(ns);
-// 	//æ›´æ–°æŒ‡å®šnæ¡æ•°æ®
+// 	//¸üĞÂÖ¸¶¨nÌõÊı¾İ
 // 	wheel::mysql::mysql_wrap::get_intance().update(vec);
 // 	//wheel::mysql::mysql_wrap::get_intance().insert(vec);
 
@@ -175,9 +175,9 @@
 // 	}
 
 // 	wheel::mysql::mysql_wrap::get_intance().connect("127.0.0.1", "root", "root", "test");
-// 	//æ›´æ–°æŒ‡å®šä¸€æ¡æ•°æ®
+// 	//¸üĞÂÖ¸¶¨Ò»ÌõÊı¾İ
 // 	//wheel::mysql::mysql_wrap::get_intance().update(ns);
-// 	//æ›´æ–°æŒ‡å®šnæ¡æ•°æ®
+// 	//¸üĞÂÖ¸¶¨nÌõÊı¾İ
 // 	//wheel::mysql::mysql_wrap::get_intance().update(vec);
 // 	//wheel::mysql::mysql_wrap::get_intance().insert(vec);
 
@@ -197,15 +197,19 @@
 
 
 #include <iostream>
+#include <boost/filesystem.hpp>
 #include <wheel/http_server.hpp>
 
 int main()
 {
+
+	std::string path = boost::filesystem::current_path().string();
 	using namespace wheel::http_servers;
 	wheel::http_servers::http_server server;
 	server.listen(9090);
 	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
-		res.set_status_and_content(status_type::ok, "æ²ˆèå¤§å±è‚¡");
+		std::string str = "111111";
+		res.set_status_and_content(status_type::ok,std::move(str));
 		});
 
 
@@ -214,7 +218,8 @@ int main()
 		std::string name = req.get_multipart_field_name("name");
 		std::string age = req.get_multipart_field_name("age");
 
-		res.set_status_and_content(status_type::ok, "æ²ˆèå¤§å±è‚¡");
+		std::string str1 = "111111";
+		res.set_status_and_content(status_type::ok, std::move(str1));
 		});
 
 	server.run();

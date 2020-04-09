@@ -156,22 +156,22 @@ namespace wheel {
 					throw std::logic_error("empty value");
 				}
 
-				if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t> ||
-					std::is_same_v<T, bool> || std::is_same_v<T, char> || std::is_same_v<T, short>) {
+				if constexpr (std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value ||
+					std::is_same<T, bool>::value || std::is_same<T, char>::value || std::is_same<T, short>::value) {
 					int r = std::atoi(val.data());
 					if (val[0] != '0' && r == 0) {
 						throw std::invalid_argument(std::string(val) + ": is not an integer");
 					}
 					return r;
 				}
-				else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+				else if constexpr (std::is_same<T, int64_t>::value || std::is_same<T, uint64_t>::value) {
 					auto r = std::atoll(val.data());
 					if (val[0] != '0' && r == 0) {
 						throw std::invalid_argument(std::string(val) + ": is not an integer");
 					}
 					return r;
 				}
-				else if constexpr (std::is_floating_point_v<T>) {
+				else if constexpr (std::is_floating_point<T>::value) {
 					char* end;
 					auto f = strtof(val.data(), &end);
 					if (val.back() != *(end - 1)) {

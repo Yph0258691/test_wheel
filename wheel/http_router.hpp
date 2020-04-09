@@ -22,7 +22,7 @@ namespace wheel {
 		class http_router {
 		public:
 			template<http_method... Is, typename Function, typename... Ap>
-			std::enable_if_t<!std::is_member_function_pointer_v<Function>> register_handler(std::string name, Function&& f, const Ap&... ap) {
+			std::enable_if_t<!std::is_member_function_pointer<Function>::value> register_handler(std::string name, Function&& f, const Ap&... ap) {
 				if constexpr (sizeof...(Is) > 0) {
 					auto arr = get_method_arr<Is...>();
 					register_nonmember_func(name, arr, std::forward<Function>(f), ap...);
@@ -33,7 +33,7 @@ namespace wheel {
 			}
 
 			template <http_method... Is, class T, class Type, typename T1, typename... Ap>
-			std::enable_if_t<std::is_same_v<T*, T1>> register_handler(std::string name, Type(T::* f)(request&, response&), T1 t, const Ap&... ap) {
+			std::enable_if_t<std::is_same<T*, T1>::value> register_handler(std::string name, Type(T::* f)(request&, response&), T1 t, const Ap&... ap) {
 				register_handler_impl<Is...>(name, f, t, ap...);
 			}
 
@@ -114,7 +114,7 @@ namespace wheel {
 				if (!r)
 					return;
 
-				if constexpr (std::is_void_v<result_type>) {
+				if constexpr (std::is_void<result_type>::value) {
 					//business
 					f(req, res);
 					//after
@@ -149,7 +149,7 @@ namespace wheel {
 				if (!r)
 					return;
 				using nonpointer_type = std::remove_pointer_t<Self>;
-				if constexpr (std::is_void_v<result_type>) {
+				if constexpr (std::is_void<result_type>::value) {
 					//business
 					if (self)
 						(*self.*f)(req, res);
@@ -180,7 +180,7 @@ namespace wheel {
 					constexpr bool has_befor_mtd = wheel::traits::has_before<decltype(item), request&, response&>::value;
 					if constexpr (has_befor_mtd)
 						r = item.before(req, res);
-					}, std::make_index_sequence<std::tuple_size_v<Tuple>>{});
+					}, std::make_index_sequence<std::tuple_size<Tuple>::value>{});
 
 				return r;
 			}
@@ -195,7 +195,7 @@ namespace wheel {
 					constexpr bool has_after_mtd = wheel::traits::has_after<decltype(item), request&, response&>::value;
 					if constexpr (has_after_mtd)
 						r = item.after(req, res);
-					}, std::make_index_sequence<std::tuple_size_v<Tuple>>{});
+					}, std::make_index_sequence<std::tuple_size<Tuple>::value>{});
 			}
 
 			template<typename T, typename Tuple>
@@ -205,9 +205,10 @@ namespace wheel {
 					if (!r)
 						return;
 
-					if constexpr (has_after<decltype(item), T, request&, response&>::value)
+					constexpr bool has_after_mtd = wheel::traits::has_after<decltype(item), T, request&, response&>::value;
+					if constexpr (has_after_mtd)
 						r = item.after(std::move(result), req, res);
-				}, std::make_index_sequence<std::tuple_size_v<Tuple>>{});
+				}, std::make_index_sequence<std::tuple_size<Tuple>::value>{});
 			}
 
 			typedef std::pair<std::array<char, 26>, std::function<void(request&, response&)>> invoker_function;

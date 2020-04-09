@@ -70,7 +70,51 @@ namespace wheel {
 		template <typename T, typename... Us>
 		struct has_type<T, std::tuple<Us...>> : disjunction<std::is_same<T, Us>...> {};
 
-		//c++17д��
+		struct nonesuch {
+			nonesuch() = delete;
+			~nonesuch() = delete;
+			nonesuch(const nonesuch&) = delete;
+			void operator=(const nonesuch&) = delete;
+		};
+
+		template<class Default, class AlwaysVoid,
+			template<class...> class Op, class... Args>
+		struct detector {
+			using value_t = std::false_type;
+			using type = Default;
+		};
+
+		template <typename ...Ts> struct make_void
+		{
+			using type = void;
+		};
+		template <typename ...Ts> using void_t = typename make_void<Ts...>::type;
+
+		template<class Default, template<class...> class Op, class... Args>
+		struct detector<Default, void_t<Op<Args...>>, Op, Args...> {
+			using value_t = std::true_type;
+			using type = Op<Args...>;
+		};
+
+		template<template<class...> class Op, class... Args>
+		using is_detected = typename detector<nonesuch, void, Op, Args...>::value_t;
+
+		template<template<class...> class Op, class... Args>
+		using detected_t = typename detector<nonesuch, void, Op, Args...>::type;
+
+		template<class T, typename... Args>
+		using has_before_t = decltype(std::declval<T>().before(std::declval<Args>()...));
+
+		template<class T, typename... Args>
+		using has_after_t = decltype(std::declval<T>().after(std::declval<Args>()...));
+		template<typename T, typename... Args>
+		using has_before = is_detected<has_before_t, T, Args...>;
+
+		template<typename T, typename... Args>
+		using has_after = is_detected<has_after_t, T, Args...>;
+
+
+		//c++17写法
 		//template <typename T, typename... Us>
 		//struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T, Us>...> {}
 

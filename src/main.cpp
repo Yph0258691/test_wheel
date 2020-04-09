@@ -7,35 +7,35 @@
 // #include <nlohmann_json.hpp>
 // #include<wheel/unit.hpp>
 
-// int main()
+//  int main()
 // {
 // 	std::string str ="fe80::5079:92b2:9cbf:e719%11";
 
-// 	bool is = wheel::unit::ipV6_check(str);
-// 	try {
-// 		nlohmann::json js;
-// 		js["name"] = "123";
-// 		js["sex"] = 1;
-// 		js["age"] = 12;
+//  	bool is = wheel::unit::ipV6_check(str);
+//  	try {
+//  		nlohmann::json js;
+//  		js["name"] = "123";
+//  		js["sex"] = 1;
+//  		js["age"] = 12;
 
-// 		std::string json = js.dump();
-// 		std::cout << json << std::endl;
-// 	}
+//  		std::string json = js.dump();
+//  		std::cout << json << std::endl;
+//  	}
 // 	catch (...) {
 
-// 	}
+//  	}
 
-// 	Test t;
-// 	t.display();
-// 	ProxyEngine eng;
+//  	Test t;
+//  	t.display();
+//  	ProxyEngine eng;
 // 	std::shared_ptr<wheel::tcp_socket::server> ptr = std::make_shared<wheel::tcp_socket::server>(std::bind(&ProxyEngine::OnMessage, &eng, std::placeholders::_1, std::placeholders::_2), 0, 8, 2, 6); //偏移后的值
 
-// 	ptr->init(9000, 4);
+//  	ptr->init(9000, 4);
 
 // 	//std::shared_ptr<wheel::client> ptr = std::make_shared<wheel::client>(std::bind(&ProxyEngine::OnMessage,&eng,std::placeholders::_1,std::placeholders::_2),0);
-// 	//	//ptr->connect("127.0.0.1", 3333);
+//  	//	//ptr->connect("127.0.0.1", 3333);
 // 	ptr->run();
-// }
+//  }
 // #include<iostream>
 // #include"wheel/json.hpp"
 // #include <config.h>
@@ -194,70 +194,28 @@
 // 	//auto result5 = wheel::mysql::mysql_wrap::get_intance().query<std::tuple<std::string,int>>("select user_name, age from name");
 // }
 
+
+
 #include <iostream>
-#include <wheel/entity.hpp>
-#include <wheel/mysql_wrap.hpp>
-
-
-struct name {
-	std::string user_name;
-	int age;
-};
-
-REFLECTION(name, user_name, age)
-
-struct user {
-	int id;
-	std::string user_name;
-	int age;
-};
-
-REFLECTION(user, id,user_name, age)
-
+#include <wheel/http_server.hpp>
 
 int main()
 {
+	using namespace wheel::http_servers;
+	wheel::http_servers::http_server server;
+	server.listen(9090);
+	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
+		res.set_status_and_content(status_type::ok, "沈萍大屁股");
+		});
 
-	std::vector<name>vec;
-	for (int i =0;i<2;++i){
-		name ns;
-		ns.age = 10;
-		ns.user_name = "1245";
-		vec.emplace_back(ns);
-	}
 
-	wheel::mysql::mysql_wrap::get_intance().connect("127.0.0.1", "root", "root", "test");
-	//创建数据库表
-	//wheel::mysql::wheel_sql_key key{ "id" };
-	//wheel::mysql::mysql_wrap::get_intance().create_table<user>(key);
+	server.set_http_handler<GET, POST>("/test", [](request& req, response& res) {
+		std::string str = req.get_header_value("session");
+		std::string name = req.get_multipart_field_name("name");
+		std::string age = req.get_multipart_field_name("age");
 
-	//wheel::mysql::mysql_wrap::get_intance().create_table<user>();
-	wheel::mysql::wheel_sql_auto_key key1("id");
-	//wheel::mysql::wheel_sql_not_null key2;
-	//key2.set("id");
+		res.set_status_and_content(status_type::ok, "沈萍大屁股");
+		});
 
-	wheel::mysql::wheel_sql_not_null key2{ {"id"} };
-
-	wheel::mysql::mysql_wrap::get_intance().create_table<user>(key2);
-
-	//更新指定一条数据
-	//wheel::mysql::mysql_wrap::get_intance().update(ns);
-	//更新指定n条数据
-	//wheel::mysql::mysql_wrap::get_intance().update(vec);
-	//wheel::mysql::mysql_wrap::get_intance().insert(vec);
-
-	//wheel::mysql::mysql_wrap::get_intance().delete_records<name>("age =20 and user_name =\"yph1111\"");
-	//auto result1 = wheel::mysql::mysql_wrap::get_intance().query<name>("select age from name where age =10 and user_name =\"yph1111\"");
-	//wheel::mysql::mysql_wrap::get_intance().query("select age from name where age =10 and user_name =\"yph1111\"");
-	wheel::mysql::query_result result;
-	//wheel::mysql::mysql_wrap::get_intance().query("select age from name where age =10 and user_name =\"yph1111\"", result);
-	//存在过程
-	//wheel::mysql::mysql_wrap::get_intance().query("call test_proc(10)", result);
-	//std::string sss = result.get_item_string(0, "user_name");
-	//int age = result.get_item_int(0, "age");
-	//auto result4 = wheel::mysql::mysql_wrap::get_intance().query<std::tuple<int>>("select count(1) from name");
-
-	//auto result5 = wheel::mysql::mysql_wrap::get_intance().query<std::tuple<std::string,int>>("select user_name, age from name");
+	server.run();
 }
-
-

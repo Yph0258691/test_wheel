@@ -81,7 +81,9 @@ namespace wheel {
 				{
 					for (size_t c = 0;c < num_threads - 1; c++) {
 						ios_threads_.emplace_back(std::make_shared<std::thread>([this]() {
-							io_service_->run();
+							boost::system::error_code ec;
+							io_service_->run(ec);
+							std::cout << ec.message() << std::endl;
 							}));
 					}
 				}catch (...){
@@ -89,10 +91,9 @@ namespace wheel {
 					return;
 				}
 
-
-				io_service_->run();
-
-				join_all();
+				boost::system::error_code ec;
+				io_service_->run(ec);
+				std::cout << ec.message() << std::endl;
 			}
 		private:
 			void make_session() {
@@ -131,6 +132,7 @@ namespace wheel {
 					});
 			}
 			void join_all() {
+				//加入之后需要等待,避免线程不回收
 				for (auto& t : ios_threads_) {
 					if (!t->joinable()) {
 						t->join();

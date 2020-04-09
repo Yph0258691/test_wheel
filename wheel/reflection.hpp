@@ -195,11 +195,11 @@ static auto reflector_reflect_members(ClassName const&) \
 		{
 		};
 
-		template< class ... > 
+		template< class ... >
 		using void_t = void;
 
 		template <typename T>
-		struct is_reflection<T,void_t<typename Reflect_members<T>::type>> : std::true_type
+		struct is_reflection<T, void_t<typename Reflect_members<T>::type>> : std::true_type
 		{
 		};
 
@@ -299,7 +299,7 @@ static auto reflector_reflect_members(ClassName const&) \
 		}
 
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each(std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>){
+		constexpr void for_each(std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>) {
 			using expander = int[];
 
 			(void)expander {
@@ -321,7 +321,7 @@ static auto reflector_reflect_members(ClassName const&) \
 		//template <typename... Args, typename F, std::size_t... Idx>
 		//constexpr void for_each(const std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>)
 		//{
-		     //(std::forward<F>(f)(std::get<Idx>(t), std::integral_constant<size_t, Idx>{}), ...);
+			 //(std::forward<F>(f)(std::get<Idx>(t), std::integral_constant<size_t, Idx>{}), ...);
 		//}
 
 		////加入函数

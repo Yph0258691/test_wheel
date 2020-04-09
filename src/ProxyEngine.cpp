@@ -33,7 +33,7 @@ int ProxyEngine::OnMessage(std::shared_ptr<wheel::tcp_socket::tcp_handle> handle
 		handler->get_read_parser()->reset_read_body();
 		int cmd = handler->get_read_parser()->get_cmd();
 		std::int16_t value = handler->get_read_parser()->read<std::int16_t>();
-		float fa = wheel::unit::uint32_to_float(handler->get_read_parser()->read<std::uint32_t>(),1);
+		//float fa = wheel::unit::uint32_to_float(handler->get_read_parser()->read<std::uint32_t>(),1);
 		std::string str = handler->get_read_parser()->read<std::string>();
 	}
 	return 0;

@@ -483,10 +483,6 @@ namespace wheel {
 			constexpr bool create_table(Args&&... args) {
 				std::string sql = generate_createtb_sql<T>(std::forward<Args>(args)...);
 				sql += " DEFAULT CHARSET=utf8";
-				if(con_ == nullptr){
-					return false;
-				}
-				
 				if (mysql_query(con_, sql.data())) {
 					err_ = mysql_error(con_);
 					return false;

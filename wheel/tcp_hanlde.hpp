@@ -397,7 +397,7 @@ namespace wheel {
 						}
 
 						set_connect_status(disconnect);
-
+						close_socket();
 						close_observer_(shared_from_this(), ec);
 					}
 					});

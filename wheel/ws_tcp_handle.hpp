@@ -401,6 +401,7 @@ namespace wheel {
 				socket_->async_receive(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_), [this](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
 						set_connect_status(disconnect);
+						close_socket();
 						close_observer_(shared_from_this(), ec);
 						return;
 					}

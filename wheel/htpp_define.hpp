@@ -72,7 +72,8 @@ namespace wheel {
 
 
 		enum class content_encoding {
-			none
+			none,
+			gzip
 		};
 
 		const std::string ok = "OK";

@@ -94,14 +94,15 @@ namespace wheel {
 			}
 
 			void handle_read(const boost::system::error_code& e, std::size_t bytes_transferred) {
-				auto last_len = request_->current_size();
+				last_transfer_ = request_->current_size();
 				bool at_capacity = request_->update_and_expand_size(bytes_transferred);
+				//support 3M buffer
 				if (at_capacity) {
 					response_back(status_type::bad_request, "The request is too long, limitation is 3M");
 					return;
 				}
 
-				int ret = request_->parse_header(len_,0);
+				int ret = request_->parse_header(len_);
 
 				if (ret == parse_status::has_error) {
 					response_back(status_type::bad_request);
@@ -114,8 +115,9 @@ namespace wheel {
 				}
 
 				else {
-					if (bytes_transferred > ret + 4) {
-						std::string str(request_->data() + ret, 4);
+					constexpr int offset = 4;
+					if (bytes_transferred > ret + offset) {
+						std::string str(request_->data() + ret, offset);
 						if (str == "GET " || str == "POST") {
 							handle_pipeline(ret, bytes_transferred);
 							return;
@@ -128,45 +130,71 @@ namespace wheel {
 			}
 
 			void handle_pipeline(int ret, std::size_t bytes_transferred) {
-				last_transfer_ += bytes_transferred;
-				if (len_ == 0)
-					len_ = ret;
-				else
-					len_ += ret;
 				response_->set_delay(true);
+				request_->set_last_len(len_);
 				handle_request(bytes_transferred);
+				last_transfer_ += bytes_transferred;
+
+				(len_ == 0) ? (len_ = ret) : (len_ += ret);
+
 				auto& rep_str = response_->response_str();
 				int result = 0;
-				int left = ret;
-				bool not_complete = false;
+				size_t left = ret;
+				bool head_not_complete = false;
+				bool body_not_complete = false;
+				size_t left_body_len = 0;
 				while (true) {
-					result = request_->parse_header(len_, len_);
+					result = request_->parse_header(len_);
 					if (result == -1) {
 						return;
 					}
 
 					if (result == -2) {
-						not_complete = true;
+						head_not_complete = true;
 						break;
 					}
-					else {
-						handle_request(bytes_transferred);
-						len_ += result;
 
-						if (len_ == last_transfer_) {
-							break;
+					auto total_len = request_->total_len();
+
+					if (total_len <= (bytes_transferred - len_)) {
+						request_ ->set_last_len(len_);
+						handle_request(bytes_transferred);
+					}
+
+					len_ += total_len;
+
+					if (len_ == last_transfer_) {
+						break;
+					}
+					else if (len_ > last_transfer_) {
+						auto n = len_ - last_transfer_;
+						len_ -= total_len;
+						if (n < request_->header_len()) {
+							head_not_complete = true;
 						}
+						else {
+							body_not_complete = true;
+							left_body_len = n;
+						}
+
+						break;
 					}
 				}
 
 				response_->set_delay(false);
 				boost::asio::async_write(*socket_, boost::asio::buffer(rep_str.data(), rep_str.size()),
-					[not_complete,this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-					if (not_complete) {
+					[head_not_complete, body_not_complete, left_body_len, this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+					if (head_not_complete) {
 						do_read_head();
 						return;
 					}
-					
+
+					if (body_not_complete) {
+						request_->set_left_body_size(left_body_len);
+						do_read_body();
+						return;
+					}
+
 					handle_write(ec);
 				});
 			}
@@ -195,16 +223,16 @@ namespace wheel {
 					default:
 						break;
 					}
+
+					return;
 				}
-				else {
-					handle_header_request();
-				}
+
+				handle_header_request();
 			}
 
 
 			//-------------octet-stream----------------//
 			void handle_octet_stream(size_t bytes_transferred) {
-				//call_back();
 				try {
 					std::string name = static_dir_ + uuids::uuid_system_generator{}().to_short_str();
 					request_->open_upload_file(name);
@@ -262,9 +290,15 @@ namespace wheel {
 					});
 			}
 
-			//-------------multipart----------------------//
-
+			//ÎÞbodyÓ¦´ð
 			void handle_header_request() {
+
+				bool r = handle_gzip();
+				if (!r) {
+					response_back(status_type::bad_request, "gzip uncompress error");
+					return;
+				}
+
 				call_back();
 
 				if (request_->get_content_type() == content_type::chunked)
@@ -274,15 +308,17 @@ namespace wheel {
 					return;
 				}
 
-				if (!response_->need_delay())
+				if (!response_->need_delay()) {
 					do_write();
+				}
 			}
 
 			content_type get_content_type() {
-				if (request_->is_chunked())
+				if (request_->is_chunked()) {
 					return content_type::chunked;
+				}
 
-				auto content_type = request_->get_header_value("content-type");
+				const std::string content_type = request_->get_header_value("content-type");
 				if (!content_type.empty()) {
 					if (content_type.find("application/x-www-form-urlencoded") != std::string::npos) {
 						return content_type::urlencoded;
@@ -300,9 +336,8 @@ namespace wheel {
 					else if (content_type.find("application/octet-stream") != std::string::npos) {
 						return content_type::octet_stream;
 					}
-					else {
-						return content_type::string;
-					}
+
+					return content_type::string;
 				}
 
 				return content_type::unknown;
@@ -592,6 +627,12 @@ namespace wheel {
 					return;
 				}
 
+				bool r = handle_gzip();
+				if (!r) {
+					response_back(status_type::bad_request, "gzip uncompress error");
+					return;
+				}
+
 				if (request_->get_content_type() == content_type::multipart) {
 					bool has_error = parse_multipart(request_->header_len(), request_->current_size() - request_->header_len());
 					if (has_error) {
@@ -684,6 +725,16 @@ namespace wheel {
 
 					request_->handle_multipart_key_value();
 				};
+			}
+
+
+			bool handle_gzip() {
+#ifdef WHEEL_ENABLE_GZIP
+				if (request_->has_gzip()) {
+					return request_->uncompress();
+				}
+#endif
+				return true;
 			}
 
 		private:

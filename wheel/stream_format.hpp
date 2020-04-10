@@ -34,11 +34,11 @@ namespace wheel {
 			header_size_ = header_size;
 		}
 
-		void set_cmd_offset(int offset) {
+		void set_cmd_offset(std::size_t offset) {
 			packet_cmd_offset_ = offset;
 		}
 
-		void set_packet_size_offset(int offset) {
+		void set_packet_size_offset(std::size_t offset) {
 			packet_size_offset_ = offset;
 		}
 

@@ -8,6 +8,7 @@
 #include "url_encode_decode.hpp"
 #include "http_multipart_reader.hpp"
 #include "upload_file.hpp"
+#include "gzip.hpp"
 
 namespace wheel {
 	namespace http_servers {
@@ -93,6 +94,14 @@ namespace wheel {
 			}
 
 			void set_part_data(std::string&& data) {
+#ifdef WHEEL_ENABLE_GZIP
+				if (has_gzip_) {
+					bool r = uncompress(data);
+					if (!r) {
+						return;
+					}
+				}
+#endif
 				part_data_ = data;
 			}
 
@@ -223,6 +232,14 @@ namespace wheel {
 			bool parse_form_urlencoded() {
 				form_url_map_.clear();
 
+#ifdef WHEEL_ENABLE_GZIP
+				if (has_gzip_) {
+					bool r = uncompress();
+					if (!r) {
+						return false;
+					}
+				}
+#endif
 				auto body_str = body();
 				form_url_map_ = parse_query(body_str);
 				if (form_url_map_.empty())
@@ -239,7 +256,7 @@ namespace wheel {
 				return is_chunked_;
 			}
 
-			int parse_header(std::size_t last_len, size_t start) {
+			int parse_header(std::size_t last_len, size_t start =0) {
 				if (!copy_headers_.empty()) {
 					copy_headers_.clear();
 				}
@@ -534,14 +551,40 @@ namespace wheel {
 			const char* current_part() const {
 				return &buffer_[header_len_];
 			}
+
+			size_t total_len() {
+				return header_len_ + body_len_;
+			}
+
+			void set_left_body_size(size_t size) {
+				left_body_len_ = size;
+			}
+
+			bool has_gzip() const {
+				return has_gzip_;
+			}
+
+#ifdef WHEEL_ENABLE_GZIP
+			bool uncompress(const std::string& str) {
+				if (str.empty()) {
+					return false;
+				}
+
+				gzip_str_.clear();
+				return gzip_codec::uncompress(str, gzip_str_);
+			}
+
+			bool uncompress() {
+				gzip_str_.clear();
+				
+				return gzip_codec::uncompress(std::string(&buffer_[header_len_], body_len_), gzip_str_);
+			}
+#endif
+
 		private:
 			std::string body() const {
 				std::string str(&buffer_[header_len_], body_len_);
 				return std::move(str);
-			}
-
-			size_t total_len() {
-				return header_len_ + body_len_;
 			}
 
 			void resize_double() {

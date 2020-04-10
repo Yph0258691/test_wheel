@@ -100,7 +100,7 @@ else ()
   endif()
 
     #设置C++编辑选项			
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread -luuid -lboost_filesystem")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread -luuid -lboost_filesystem -lz")
 
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
@@ -118,6 +118,20 @@ else ()
    set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O2")
   endif()
 endif ()
+
+#是否增加zlib库
+option(USE_ZIBLIBARY "select to use zlib libary" OFF)
+if(USE_ZIBLIBARY)
+   add_definitions(-DWHEEL_ENABLE_GZIP)
+   if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+     include_directories(${CMAKE_SOURCE_DIR}/third_party/zlib/include/)
+     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+       link_directories(${CMAKE_SOURCE_DIR}/third_party/zlib/lib/x64)
+    else()
+      link_directories(${CMAKE_SOURCE_DIR}/third_party/zlib/lib/x86)
+     endif(CMAKE_SIZEOF_VOID_P EQUAL 8)  
+   endif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+endif(USE_ZIBLIBARY)
 
 #提示默认安装路径
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -150,9 +164,9 @@ file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")	
   #第三方库搜索头文件
-  include_directories($ENV{GSL_ROOT}/include /usr/local/include)
+  include_directories($ENV{GSL_ROOT}/include /usr/local/include /usr/include)
   #第三方库的lib
-  link_directories($ENV{GSL_ROOT}/lib/ /usr/lib/)
+  link_directories($ENV{GSL_ROOT}/lib/ /usr/lib/ /usr/lib64/)
 endif() 
 
 #windows下设置boost库的位置

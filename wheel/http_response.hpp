@@ -8,6 +8,7 @@
 #include "htpp_define.hpp"
 #include "picohttpparser.hpp"
 #include "itoa.hpp"
+#include "gzip.hpp"
 
 namespace wheel {
 	namespace http_servers {
@@ -136,7 +137,20 @@ namespace wheel {
 				status_ = status;
 				res_type_ = res_type;
 
-				set_content(std::move(content));
+#ifdef WHEEL_ENABLE_GZIP
+				if (encoding == content_encoding::gzip) {
+					std::string encode_str;
+					bool r = gzip_codec::compress(std::string(content.data(), content.length()), encode_str, true);
+					if (!r) {
+						set_status_and_content(status_type::internal_server_error, "gzip compress error");
+					}else {
+						add_header("Content-Encoding", "gzip");
+						set_content(std::move(encode_str));
+					}
+				}
+				else
+#endif
+					set_content(std::move(content));
 
 				build_response_str();
 			}
@@ -233,12 +247,20 @@ namespace wheel {
 
 			void render_json(const nlohmann::json& json_data)
 			{
+#ifdef  WHEEL_ENABLE_GZIP
+				set_status_and_content(status_type::ok, json_data.dump(), res_content_type::json, content_encoding::gzip);
+#else
 				set_status_and_content(status_type::ok, json_data.dump(), res_content_type::json, content_encoding::none);
+#endif
 			}
 
 			void render_string(std::string&& content)
 			{
+#ifdef  WHEEL_ENABLE_GZIP
+				set_status_and_content(status_type::ok, std::move(content), res_content_type::string, content_encoding::gzip);
+#else
 				set_status_and_content(status_type::ok, std::move(content), res_content_type::string, content_encoding::none);
+#endif
 			}
 
 			std::vector<std::string> raw_content() {

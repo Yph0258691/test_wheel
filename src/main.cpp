@@ -196,20 +196,21 @@
 
 
 
+
 #include <iostream>
-#include <boost/filesystem.hpp>
 #include <wheel/http_server.hpp>
+#include <wheel/gzip.hpp>
 
 int main()
 {
-
-	std::string path = boost::filesystem::current_path().string();
+	std::string data = "111111111111111111111111assd";
+	std::string compress_data;
+	wheel::gzip_codec::compress(data, compress_data);
 	using namespace wheel::http_servers;
 	wheel::http_servers::http_server server;
 	server.listen(9090);
 	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
-		std::string str = "111111";
-		res.set_status_and_content(status_type::ok,std::move(str));
+		res.set_status_and_content(status_type::ok, "沈萍大屁股");
 		});
 
 
@@ -218,8 +219,7 @@ int main()
 		std::string name = req.get_multipart_field_name("name");
 		std::string age = req.get_multipart_field_name("age");
 
-		std::string str1 = "111111";
-		res.set_status_and_content(status_type::ok, std::move(str1));
+		res.set_status_and_content(status_type::ok, "沈萍大屁股");
 		});
 
 	server.run();

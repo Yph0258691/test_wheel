@@ -284,7 +284,7 @@ namespace wheel {
 				return opt.value();
 			}
 
-			int set_base_receive_buffer_size(std::size_t size, bool force = false) {
+			int set_base_receive_buffer_size(int size, bool force = false) {
 				if (socket_ == nullptr){
 					return -1;
 				}
@@ -319,7 +319,7 @@ namespace wheel {
 				return ec.value();
 			}
 
-			int set_base_send_buffer_size(std::size_t send_buffer_size, bool force=false)
+			int set_base_send_buffer_size(int send_buffer_size, bool force=false)
 			{
 				if (socket_ == nullptr) {
 					return -1;

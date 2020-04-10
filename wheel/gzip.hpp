@@ -1,7 +1,7 @@
 #ifndef gzip_h__
 #define gzip_h__
 #include <string>
-#include <zlib/include/zlib.h>
+#include <zlib.h>
 namespace wheel {
 	namespace gzip_codec {
 		//from https://github.com/chafey/GZipCodec

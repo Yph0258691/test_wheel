@@ -4,13 +4,13 @@
 #ifdef WHEEL_ENABLE_SSL
 #include <boost/asio/ssl.hpp>
 #endif
+#include <iostream>
+#include <memory>
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
-#include <memory>
 #include "unit.hpp"
 #include "http_response.hpp"
 #include "http_request.hpp"
-#include <boost/filesystem.hpp>
 #include "http_multipart_reader.hpp"
 #include "uuid.h"
 
@@ -32,9 +32,12 @@ namespace wheel {
 
 		public:
 			http_tcp_handle() = delete;
-			http_tcp_handle(const std::shared_ptr<boost::asio::io_service> ios, http_handler& handle,const std::string &static_dir,const ssl_configure& ssl_conf):http_handler_(handle)
+			http_tcp_handle(const std::shared_ptr<boost::asio::io_service> ios, http_handler& handle,
+				const std::string &static_dir,const ssl_configure& ssl_conf):http_handler_(handle)
 			,ios_(ios),static_dir_(static_dir){
+#ifndef WHEEL_ENABLE_SSL 
 				socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*ios_);
+#endif
 				request_ = std::make_unique<request>();
 				response_ = std::make_unique<response>();
 
@@ -43,21 +46,25 @@ namespace wheel {
 				if (!init_ssl_context(ssl_conf)){
 					exit(0);
 				}
-
 #endif
 				init_multipart_parser();
 			}
 
-			std::shared_ptr<boost::asio::ip::tcp::socket> get_socket()const {
-				return socket_;
+			auto & get_socket()const {
+#ifdef WHEEL_ENABLE_SSL
+				return ssl_socket_->lowest_layer();
+#else
+				return *socket_; 
+#endif
 			}
 
 			~http_tcp_handle() {
 				close();
 #ifdef WHEEL_ENABLE_SSL
-				ssl_stream_ = nullptr;
-#endif
+				ssl_socket_ = nullptr;
+#else
 				socket_ = nullptr;
+#endif
 			}
 
 			void activate() {
@@ -77,9 +84,22 @@ namespace wheel {
 				multipart_begin_ = std::move(begin);
 			}
 		private:
+			bool check_argument(){
+#ifdef WHEEL_ENABLE_SSL
+				if (ssl_socket_ == nullptr) {
+					return false;
+				}
+#else
+				if (socket_ == nullptr) {
+					return false;
+				}
+#endif
+				return true;
+			}
+
 			auto& socket() {
 #ifdef WHEEL_ENABLE_SSL
-				return *ssl_stream_;
+				return *ssl_socket_;
 #else
 				return *socket_;
 #endif	
@@ -94,7 +114,7 @@ namespace wheel {
 					boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23);
 					ssl_context.set_options(ssl_options);
 					if (!ssl_conf.passp_hrase.empty()){
-						ssl_context.set_password_callback([ssl_conf](std::size_t max_length, auto& purpose) {return ssl_conf.passp_hrase; });
+						ssl_context.set_password_callback([ssl_conf](size_t, boost::asio::ssl::context_base::password_purpose) {return ssl_conf.passp_hrase; });
 					}
 
 					boost::system::error_code ec;
@@ -110,7 +130,7 @@ namespace wheel {
 						std::cout << "server.key is empty" << std::endl;
 					}
 
-					ssl_stream_ = std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>>(*socket_, ssl_context);
+					ssl_socket_ = std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(*ios_, ssl_context);
 				}
 				catch (const std::exception & e) {
 					std::cout << e.what() << std::endl;
@@ -121,6 +141,10 @@ namespace wheel {
 			}
 #endif
 			void do_read() {
+				if (request_ == nullptr || response_ == nullptr){
+					return;
+				}
+
 				last_transfer_ = 0;
 				len_ = 0;
 
@@ -134,10 +158,13 @@ namespace wheel {
 				}
 			}
 
-
 			void async_handshake() {
-#ifdef WHEEL_ENABLE_SSL            
-				ssl_stream_->async_handshake(boost::asio::ssl::stream_base::server,
+#ifdef WHEEL_ENABLE_SSL     
+				if (ssl_socket_ == nullptr){
+					return;
+				}
+
+				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,
 					[this](const boost::system::error_code& error) {
 					if (error) {
 						release_session(boost::asio::error::make_error_code(
@@ -153,11 +180,9 @@ namespace wheel {
 			}
 
 			void async_read_some() {
-#ifdef WHEEL_ENABLE_SSL
-				if (is_ssl_ && ssl_stream_ == nullptr) {
+				if (!check_argument()){
 					return;
 				}
-#endif
 
 				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->left_size()), [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					if (ec) {
@@ -170,25 +195,20 @@ namespace wheel {
 						return;
 					}
 
-					handle_read(ec, bytes_transferred);
+					handle_read(bytes_transferred);
 					});
 			}
 			void close() {
+				if (!check_argument()) {
+					return;
+				}
+
 				boost::system::error_code ignored_ec;
 #ifdef WHEEL_ENABLE_SSL
-				if (ssl_stream_ == nullptr){
-					return;
+				if (ssl_socket_->lowest_layer().is_open()) {
+					ssl_socket_->lowest_layer().close(ignored_ec);
 				}
-
-				if (ssl_stream_->lowest_layer().is_open()) {
-					ssl_stream_->lowest_layer().close(ignored_ec);
-				}
-
 #else
-				if (socket_ == nullptr){
-					return;
-				}
-
 				if (socket_->is_open()){
 					socket_->close(ignored_ec);
 				}
@@ -197,12 +217,18 @@ namespace wheel {
 
 			void release_session(const boost::system::error_code& ec) {
 				//shared_from_this不能被调两次
-				if (close_observer_ != nullptr) {
-					close_observer_(shared_from_this(), ec);
+				if (close_observer_ == nullptr) {
+					return;
 				}
+
+				close_observer_(shared_from_this(), ec);
 			}
 
 			void do_read_head() {
+				if (!check_argument()) {
+					return;
+				}
+
 				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->left_size()),
 					[this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 						if (ec){
@@ -211,11 +237,15 @@ namespace wheel {
 							return;
 						}
 
-						handle_read(ec, bytes_transferred);
+						handle_read(bytes_transferred);
 				});
 			}
 
-			void handle_read(const boost::system::error_code& e, std::size_t bytes_transferred) {
+			void handle_read(std::size_t bytes_transferred) {
+				if (request_ == nullptr){
+					return;
+				}
+
 				last_transfer_ = request_->current_size();
 				bool at_capacity = request_->update_and_expand_size(bytes_transferred);
 				//support 3M buffer
@@ -234,9 +264,7 @@ namespace wheel {
 				check_keep_alive();
 				if (ret == parse_status::not_complete) {
 					do_read_head();
-				}
-
-				else {
+				}else {
 					constexpr int offset = 4;
 					if (bytes_transferred > ret + offset) {
 						std::string str(request_->data() + ret, offset);
@@ -252,6 +280,10 @@ namespace wheel {
 			}
 
 			void handle_pipeline(int ret, std::size_t bytes_transferred) {
+				if (request_ == nullptr || response_ == nullptr){
+					return;
+				}
+
 				response_->set_delay(true);
 				request_->set_last_len(len_);
 				handle_request(bytes_transferred);
@@ -259,7 +291,7 @@ namespace wheel {
 
 				(len_ == 0) ? (len_ = ret) : (len_ += ret);
 
-				auto& rep_str = response_->response_str();
+				const std::string rep_str = response_->response_str();
 				int result = 0;
 				size_t left = ret;
 				bool head_not_complete = false;
@@ -303,6 +335,10 @@ namespace wheel {
 					}
 				}
 
+				if (!check_argument()) {
+					return;
+				}
+
 				response_->set_delay(false);
 				boost::asio::async_write(socket(), boost::asio::buffer(rep_str.data(), rep_str.size()),
 					[head_not_complete, body_not_complete, left_body_len, this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
@@ -322,11 +358,14 @@ namespace wheel {
 			}
 
 			void handle_request(std::size_t bytes_transferred) {
+				if (request_ == nullptr){
+					return;
+				}
+
 				if (request_->has_body()) {
-
 					request_->set_http_type(get_content_type());
-
-					switch (request_->get_content_type()) {
+					const auto type = request_->get_content_type();
+					switch (type) {
 					case content_type::string:
 					case content_type::unknown:
 						handle_string_body(bytes_transferred);
@@ -344,18 +383,22 @@ namespace wheel {
 						handle_octet_stream(bytes_transferred);
 						break;
 					default:
+						std::cout << "类型不支持:"<< (int)type << std::endl;
 						break;
 					}
 
 					return;
 				}
 
-				handle_header_request();
+				handle_no_body_respone();
 			}
-
 
 			//-------------octet-stream----------------//
 			void handle_octet_stream(size_t bytes_transferred) {
+				if (request_ == nullptr){
+					return;
+				}
+
 				try {
 					std::string name = static_dir_ + uuids::uuid_system_generator{}().to_short_str();
 					request_->open_upload_file(name);
@@ -378,8 +421,7 @@ namespace wheel {
 					request_->set_state(data_proc_state::data_end);
 					call_back();
 					do_write();
-				}
-				else {
+				}else {
 					request_->fit_size();
 					request_->set_current_size(0);
 					do_read_octet_stream_body();
@@ -387,6 +429,10 @@ namespace wheel {
 			}
 
 			void do_read_octet_stream_body() {
+				if (!check_argument() || request_ == nullptr) {
+					return;
+				}
+
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
@@ -413,7 +459,10 @@ namespace wheel {
 			}
 
 			//无body应答
-			void handle_header_request() {
+			void handle_no_body_respone() {
+				if (request_ == nullptr){
+					return;
+				}
 
 				bool r = handle_gzip();
 				if (!r) {
@@ -436,14 +485,18 @@ namespace wheel {
 			}
 
 			content_type get_content_type() {
+				if (request_ == nullptr){
+					return std::move((content_type)-100);
+				}
+
 				if (request_->is_chunked()) {
-					return content_type::chunked;
+					return std::move(content_type::chunked);
 				}
 
 				const std::string content_type = request_->get_header_value("content-type");
 				if (!content_type.empty()) {
 					if (content_type.find("application/x-www-form-urlencoded") != std::string::npos) {
-						return content_type::urlencoded;
+						return std::move(content_type::urlencoded);
 					}
 					else if (content_type.find("multipart/form-data") != std::string::npos) {
 						auto size = content_type.find("=");
@@ -453,21 +506,25 @@ namespace wheel {
 						}
 						std::string boundary(bd.data(), bd.length());
 						multipart_parser_.set_boundary("\r\n--" + std::move(boundary));
-						return content_type::multipart;
+						return std::move(content_type::multipart);
 					}
 					else if (content_type.find("application/octet-stream") != std::string::npos) {
-						return content_type::octet_stream;
+						return std::move(content_type::octet_stream);
 					}
 
-					return content_type::string;
+					return std::move(content_type::string);
 				}
 
-				return content_type::unknown;
+				return std::move(content_type::unknown);
 			}
 
 			//-------------form urlencoded----------------//
 			//TODO: here later will refactor the duplicate code
 			void handle_form_urlencoded(size_t bytes_transferred) {
+				if (request_ == nullptr){
+					return;
+				}
+
 				if (request_->at_capacity()) {
 					response_back(status_type::bad_request, "The request is too long, limitation is 3M");
 					return;
@@ -477,14 +534,17 @@ namespace wheel {
 					handle_url_urlencoded_body();
 				}else {
 					request_->expand_size();
-					size_t part_size = bytes_transferred - request_->header_len();
-					request_->reduce_left_body_size(part_size);
+					request_->reduce_left_body_size((bytes_transferred - request_->header_len()));
 					do_read_form_urlencoded();
 				}
 			}
 
 			//不支持chunkded
 			void handle_chunked(size_t bytes_transferred) {
+				if (request_ == nullptr){
+					return;
+				}
+
 				int ret = request_->parse_chunked(bytes_transferred);
 				if (ret == parse_status::has_error) {
 					response_back(status_type::internal_server_error, "not support yet");
@@ -493,6 +553,10 @@ namespace wheel {
 			}
 
 			void do_read_form_urlencoded() {
+				if (!check_argument() ||request_ == nullptr) {
+					return;
+				}
+
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
@@ -513,6 +577,10 @@ namespace wheel {
 					});
 			}
 			void handle_url_urlencoded_body() {
+				if (request_ == nullptr){
+					return;
+				}
+
 				bool success = request_->parse_form_urlencoded();
 
 				if (!success) {
@@ -528,6 +596,10 @@ namespace wheel {
 
 			/****************** begin handle http body data *****************/
 			void handle_string_body(std::size_t bytes_transferred) {
+				if (request_ == nullptr){
+					return;
+				}
+
 				if (request_->at_capacity()) {
 					response_back(status_type::bad_request, "The request is too long, limitation is 3M");
 					return;
@@ -549,6 +621,10 @@ namespace wheel {
 			}
 
 			void handle_multipart() {
+				if (request_ == nullptr || response_ == nullptr){
+					return;
+				}
+
 				if (upload_check_) {
 					bool r = (*upload_check_)(*request_,*response_);
 					if (!r) {
@@ -575,6 +651,10 @@ namespace wheel {
 			}
 
 			void do_read_multipart() {
+				if (!check_argument() || request_ == nullptr) {
+					return;
+				}
+
 				request_->fit_size();
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
 					[this](boost::system::error_code ec, std::size_t length) {
@@ -605,6 +685,10 @@ namespace wheel {
 			}
 
 			void do_read_part_data() {
+				if (!check_argument() || request_ == nullptr) {
+					return;
+				}
+
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_size()),
 					[this](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
@@ -631,8 +715,9 @@ namespace wheel {
 			}
 
 			bool parse_multipart(size_t size, std::size_t length) {
-				if (length == 0)
+				if (length == 0 ||request_ == nullptr) {
 					return false;
+				}
 
 				request_->set_part_data(std::string(request_->buffer(size), length));
 				std::string multipart_body = request_->get_part_data();
@@ -654,6 +739,10 @@ namespace wheel {
 			}
 
 			void do_read_body() {
+				if (!check_argument() || request_ == nullptr) {
+					return;
+				}
+
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
@@ -674,53 +763,77 @@ namespace wheel {
 					});
 			}
 
-
-
 			void init() {
+				if (!check_argument()) {
+					return;
+				}
+
 				boost::system::error_code ec;
 				//关闭牛逼的算法(nagle算法),防止TCP的数据包在饱满时才发送过去
-				socket_->set_option(boost::asio::ip::tcp::no_delay(true), ec);
+				boost::asio::ip::tcp::no_delay option(true);
+#ifdef WHEEL_ENABLE_SSL
+				ssl_socket_->lowest_layer().set_option(option);
+#else
+				socket_->set_option(option, ec);
 
+#endif
 				//有time_wait状态下，可端口短时间可以重用
 				//默认是2MSL也就是 (RFC793中规定MSL为2分钟)也就是4分钟
 				set_reuse_address();
 			}
 
 			void set_reuse_address() {
-				if (socket_ == nullptr) {
+				if (!check_argument()) {
 					return;
 				}
 
 				boost::system::error_code ec;
-				socket_->set_option(boost::asio::socket_base::reuse_address(true), ec);
+				boost::asio::socket_base::reuse_address readdress(true);
+#ifdef WHEEL_ENABLE_SSL
+					ssl_socket_->lowest_layer().set_option(readdress, ec);
+#else
+					socket_->set_option(readdress, ec);
+#endif
 			}
 
 			void response_back(status_type status, std::string&& content) {
+				if (response_ == nullptr){
+					return;
+				}
+
 				response_->set_status_and_content(status, std::move(content));
 				do_write(); //response to client
 			}
 
 			void response_back(status_type status) {
+				if (response_ == nullptr) {
+					return;
+				}
+
 				response_->set_status_and_content(status);
 				do_write(); //response to client
 			}
 
 			void do_write() {
+				if (!check_argument() || response_ == nullptr) {
+					return;
+				}
 
 				const std::string& rep_str = response_->response_str();
 				if (rep_str.empty()) {
-					this->handle_write(boost::system::error_code{});
+					handle_write(boost::system::error_code{});
 					return;
 				}
 
 				boost::asio::async_write(socket(), boost::asio::buffer(rep_str.data(), rep_str.size()),
 					[this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-						this->handle_write(ec);
+						handle_write(ec);
 				});
 			}
 
 			void handle_write(const boost::system::error_code& ec) {
 				if (ec) {
+					std::cout << ec.message() << std::endl;
 					return;
 				}
 
@@ -728,11 +841,15 @@ namespace wheel {
 					do_read();
 				}else {
 					release_session(boost::asio::error::make_error_code(
-						static_cast<boost::asio::error::basic_errors>(ec.value())));
+						static_cast<boost::asio::error::basic_errors>(boost::asio::error::connection_reset)));
 				}
 			}
 
 			void check_keep_alive() {
+				if (request_ == nullptr){
+					return;
+				}
+
 				auto req_conn_hdr = request_->get_header_value("connection");
 				if (request_->is_http11()) {
 					keep_alive_ = req_conn_hdr.empty() || !wheel::unit::iequal(req_conn_hdr.data(), req_conn_hdr.size(), "close");
@@ -744,6 +861,10 @@ namespace wheel {
 
 
 			void handle_body() {
+				if (request_ == nullptr || response_ == nullptr){
+					return;
+				}
+
 				if (request_->at_capacity()) {
 					response_back(status_type::bad_request, "The body is too long, limitation is 3M");
 					return;
@@ -767,17 +888,24 @@ namespace wheel {
 
 				call_back();
 
-				if (!response_->need_delay())
+				if (!response_->need_delay()) {
 					do_write();
+				}
 			}
 
 			void call_back() {
-				if (http_handler_ != nullptr){
-					http_handler_(*request_, *response_);
+				if (http_handler_ == nullptr){
+					return;
 				}
+
+				http_handler_(*request_, *response_);
 			}
 			//-------------multipart----------------------//
 			void init_multipart_parser() {
+				if (request_ == nullptr || response_ == nullptr){
+					return;
+				}
+
 				multipart_parser_.on_part_begin = [this](const multipart_headers& headers) {
 					request_->set_multipart_headers(headers);
 					auto filename = request_->get_multipart_field_name("filename");
@@ -852,6 +980,10 @@ namespace wheel {
 
 			bool handle_gzip() {
 #ifdef WHEEL_ENABLE_GZIP
+				if (request_ ==nullptr){
+					return false;
+				}
+
 				if (request_->has_gzip()) {
 					return request_->uncompress();
 				}
@@ -860,27 +992,27 @@ namespace wheel {
 			}
 
 		private:
-#ifdef WHEEL_ENABLE_SSL
-			std::unique_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>> ssl_stream_{};
-#endif
+			bool is_multi_part_file_;
 			bool is_ssl_ = false;
 			bool has_shake_ = false;
-			//callback handler to application layer
+			bool keep_alive_ = false;
 			const std::string& static_dir_;
 			const http_handler& http_handler_;
-			multipart_reader multipart_parser_;
-			bool keep_alive_ = false;
-			std::function<bool(request&, response&)>* upload_check_ = nullptr;
-			std::function<void(request&, std::string&)> multipart_begin_ = nullptr;
-			std::unique_ptr<response>response_;
 			ConnectEventObserver		connect_observer_;
 			CloseEventObserver			close_observer_;
-			std::unique_ptr<request>request_;
-			std::shared_ptr<boost::asio::ip::tcp::socket> socket_;
-			std::shared_ptr<boost::asio::io_service>ios_;
 			size_t len_ = 0;
 			size_t last_transfer_ = 0;
-			bool is_multi_part_file_;
+			multipart_reader multipart_parser_;
+			std::unique_ptr<request>request_{};
+			std::unique_ptr<response>response_;
+			std::shared_ptr<boost::asio::io_service>ios_{};
+			std::function<bool(request&, response&)>* upload_check_ = nullptr;
+			std::function<void(request&, std::string&)> multipart_begin_ = nullptr;
+#ifdef WHEEL_ENABLE_SSL
+			std::unique_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> ssl_socket_{};
+#else
+			std::shared_ptr<boost::asio::ip::tcp::socket> socket_{};
+#endif
 		};
 	}
 }

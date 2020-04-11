@@ -104,7 +104,7 @@ namespace wheel {
 				}
 
 				//发一次数据接收一次
-				accept_->async_accept(*new_session->get_socket(), [this, new_session](const boost::system::error_code& ec) {
+				accept_->async_accept(new_session->get_socket(), [this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}

@@ -20,6 +20,7 @@ namespace wheel {
 			~http_server() {
 				join_all();
 
+				connects_.clear();
 				ios_threads_.clear();
 			}
 
@@ -66,6 +67,12 @@ namespace wheel {
 				ios_->run(ec);
 				std::cout << ec.message() << std::endl;
 			}
+
+#ifdef WHEEL_ENABLE_SSL
+			void set_ssl_conf(ssl_configure conf) {
+				ssl_conf_ = std::move(conf);
+			}
+#endif
 		private:
 			void join_all() {
 				//加入之后需要等待,避免线程不回收
@@ -84,7 +91,7 @@ namespace wheel {
 				std::shared_ptr<http_tcp_handle > new_session = nullptr;
 				try
 				{
-					new_session = std::make_shared<http_tcp_handle>(ios_,http_handler_, upload_dir_);
+					new_session = std::make_shared<http_tcp_handle>(ios_,http_handler_, upload_dir_, ssl_conf_);
 				}
 				catch (const std::exception & ex)
 				{
@@ -156,6 +163,7 @@ namespace wheel {
 			}
 
 		private:
+			ssl_configure ssl_conf_;
 			std::string upload_dir_ = fs::absolute("www").string(); //default
 			http_handler http_handler_;
 			http_router http_router_;

@@ -1,7 +1,11 @@
 #ifndef http_tcp_handle_h__
 #define http_tcp_handle_h__
 
+#ifdef WHEEL_ENABLE_SSL
+#include <boost/asio/ssl.hpp>
+#endif
 #include <boost/asio.hpp>
+#include <boost/filesystem.hpp>
 #include <memory>
 #include "unit.hpp"
 #include "http_response.hpp"
@@ -10,8 +14,16 @@
 #include "http_multipart_reader.hpp"
 #include "uuid.h"
 
+
 namespace wheel {
 	namespace http_servers {
+		struct ssl_configure {
+			std::string cert_file;          //private cert
+			std::string key_file;           //private key
+			std::string passp_hrase;        //password;//私有key，是否输入密码
+		};
+
+		namespace fs = boost::filesystem;
 		using http_handler = std::function<void(request&, response&)>;
 		class http_tcp_handle:public std::enable_shared_from_this<http_tcp_handle> {
 			typedef std::function<void(std::shared_ptr<http_tcp_handle >, const boost::system::error_code&) > CloseEventObserver;
@@ -20,12 +32,19 @@ namespace wheel {
 
 		public:
 			http_tcp_handle() = delete;
-			http_tcp_handle(const std::shared_ptr<boost::asio::io_service> ios, http_handler& handle,const std::string &static_dir):http_handler_(handle)
+			http_tcp_handle(const std::shared_ptr<boost::asio::io_service> ios, http_handler& handle,const std::string &static_dir,const ssl_configure& ssl_conf):http_handler_(handle)
 			,ios_(ios),static_dir_(static_dir){
 				socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*ios_);
 				request_ = std::make_unique<request>();
 				response_ = std::make_unique<response>();
 
+#ifdef WHEEL_ENABLE_SSL
+				is_ssl_ = true;
+				if (!init_ssl_context(ssl_conf)){
+					exit(0);
+				}
+
+#endif
 				init_multipart_parser();
 			}
 
@@ -34,7 +53,11 @@ namespace wheel {
 			}
 
 			~http_tcp_handle() {
-
+				close();
+#ifdef WHEEL_ENABLE_SSL
+				ssl_stream_ = nullptr;
+#endif
+				socket_ = nullptr;
 			}
 
 			void activate() {
@@ -54,6 +77,49 @@ namespace wheel {
 				multipart_begin_ = std::move(begin);
 			}
 		private:
+			auto& socket() {
+#ifdef WHEEL_ENABLE_SSL
+				return *ssl_stream_;
+#else
+				return *socket_;
+#endif	
+			}
+
+#ifdef WHEEL_ENABLE_SSL
+			bool init_ssl_context(ssl_configure ssl_conf) {
+				unsigned long ssl_options = boost::asio::ssl::context::default_workarounds
+					| boost::asio::ssl::context::no_sslv2
+					| boost::asio::ssl::context::single_dh_use;
+				try {
+					boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23);
+					ssl_context.set_options(ssl_options);
+					if (!ssl_conf.passp_hrase.empty()){
+						ssl_context.set_password_callback([ssl_conf](std::size_t max_length, auto& purpose) {return ssl_conf.passp_hrase; });
+					}
+
+					boost::system::error_code ec;
+					if (fs::exists(ssl_conf.cert_file, ec)) {
+						ssl_context.use_certificate_chain_file(std::move(ssl_conf.cert_file));
+					}else {
+						std::cout << "server.crt is empty" << std::endl;
+					}
+
+					if (fs::exists(ssl_conf.key_file, ec)) {
+						ssl_context.use_private_key_file(std::move(ssl_conf.key_file), boost::asio::ssl::context::pem);
+					}else {
+						std::cout << "server.key is empty" << std::endl;
+					}
+
+					ssl_stream_ = std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>>(*socket_, ssl_context);
+				}
+				catch (const std::exception & e) {
+					std::cout << e.what() << std::endl;
+					return false;
+				}
+
+				return true;
+			}
+#endif
 			void do_read() {
 				last_transfer_ = 0;
 				len_ = 0;
@@ -61,31 +127,87 @@ namespace wheel {
 				request_->reset();
 				response_->reset();
 
-				socket_->async_read_some(boost::asio::buffer(request_->buffer(), request_->left_size()), [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
-					if (ec){
-						if (ec == boost::asio::error::eof) {
-							close();
-							close_observer_(shared_from_this(),ec);
-						}
+				if (is_ssl_ && !has_shake_) {
+					async_handshake();
+				}else {
+					async_read_some();
+				}
+			}
 
+
+			void async_handshake() {
+#ifdef WHEEL_ENABLE_SSL            
+				ssl_stream_->async_handshake(boost::asio::ssl::stream_base::server,
+					[this](const boost::system::error_code& error) {
+					if (error) {
+						release_session(boost::asio::error::make_error_code(
+							static_cast<boost::asio::error::basic_errors>(error.value())));
+						std::cout << error.message() << std::endl;
 						return;
 					}
 
-					this->handle_read(ec, bytes_transferred);
-					});
+					has_shake_ = true;
+					async_read_some();
+				});
+#endif
 			}
 
+			void async_read_some() {
+#ifdef WHEEL_ENABLE_SSL
+				if (is_ssl_ && ssl_stream_ == nullptr) {
+					return;
+				}
+#endif
+
+				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->left_size()), [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+					if (ec) {
+						if (ec == boost::asio::error::eof || bytes_transferred ==0) {
+							release_session(boost::asio::error::make_error_code(
+								static_cast<boost::asio::error::basic_errors>(ec.value())));
+						}
+
+						has_shake_ = false;
+						return;
+					}
+
+					handle_read(ec, bytes_transferred);
+					});
+			}
 			void close() {
 				boost::system::error_code ignored_ec;
-				socket_->close(ignored_ec);
+#ifdef WHEEL_ENABLE_SSL
+				if (ssl_stream_ == nullptr){
+					return;
+				}
+
+				if (ssl_stream_->lowest_layer().is_open()) {
+					ssl_stream_->lowest_layer().close(ignored_ec);
+				}
+
+#else
+				if (socket_ == nullptr){
+					return;
+				}
+
+				if (socket_->is_open()){
+					socket_->close(ignored_ec);
+				}
+#endif
+			}
+
+			void release_session(const boost::system::error_code& ec) {
+				//shared_from_this不能被调两次
+				if (close_observer_ != nullptr) {
+					close_observer_(shared_from_this(), ec);
+				}
 			}
 
 			void do_read_head() {
-				socket_->async_read_some(boost::asio::buffer(request_->buffer(), request_->left_size()),
+				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->left_size()),
 					[this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 						if (ec){
-							close();
-							close_observer_(shared_from_this(), ec);
+							release_session(boost::asio::error::make_error_code(
+								static_cast<boost::asio::error::basic_errors>(ec.value())));
 							return;
 						}
 
@@ -182,7 +304,7 @@ namespace wheel {
 				}
 
 				response_->set_delay(false);
-				boost::asio::async_write(*socket_, boost::asio::buffer(rep_str.data(), rep_str.size()),
+				boost::asio::async_write(socket(), boost::asio::buffer(rep_str.data(), rep_str.size()),
 					[head_not_complete, body_not_complete, left_body_len, this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					if (head_not_complete) {
 						do_read_head();
@@ -201,9 +323,10 @@ namespace wheel {
 
 			void handle_request(std::size_t bytes_transferred) {
 				if (request_->has_body()) {
-					auto type = get_content_type();
-					request_->set_http_type(type);
-					switch (type) {
+
+					request_->set_http_type(get_content_type());
+
+					switch (request_->get_content_type()) {
 					case content_type::string:
 					case content_type::unknown:
 						handle_string_body(bytes_transferred);
@@ -264,13 +387,12 @@ namespace wheel {
 			}
 
 			void do_read_octet_stream_body() {
-				auto self = this->shared_from_this();
-				boost::asio::async_read(*socket_, boost::asio::buffer(request_->buffer(), request_->left_body_len()),
-					[this, self](const boost::system::error_code& ec, size_t bytes_transferred) {
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
+					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							request_->set_state(data_proc_state::data_error);
-							call_back();
-							close();
+							release_session(boost::asio::error::make_error_code(
+								static_cast<boost::asio::error::basic_errors>(ec.value())));
 							return;
 						}
 
@@ -353,8 +475,7 @@ namespace wheel {
 
 				if (request_->has_recieved_all()) {
 					handle_url_urlencoded_body();
-				}
-				else {
+				}else {
 					request_->expand_size();
 					size_t part_size = bytes_transferred - request_->header_len();
 					request_->reduce_left_body_size(part_size);
@@ -372,10 +493,11 @@ namespace wheel {
 			}
 
 			void do_read_form_urlencoded() {
-				boost::asio::async_read(*socket_, boost::asio::buffer(request_->buffer(), request_->left_body_len()),
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
-							close();
+							release_session(boost::asio::error::make_error_code(
+								static_cast<boost::asio::error::basic_errors>(ec.value())));
 							return;
 						}
 
@@ -399,8 +521,9 @@ namespace wheel {
 				}
 
 				call_back();
-				if (!response_->need_delay())
+				if (!response_->need_delay()) {
 					do_write();
+				}
 			}
 
 			/****************** begin handle http body data *****************/
@@ -429,7 +552,7 @@ namespace wheel {
 				if (upload_check_) {
 					bool r = (*upload_check_)(*request_,*response_);
 					if (!r) {
-						close();
+						release_session(boost::asio::error::make_error_code(boost::asio::error::invalid_argument));
 						return;
 					}
 				}
@@ -452,11 +575,9 @@ namespace wheel {
 			}
 
 			void do_read_multipart() {
-
 				request_->fit_size();
-				auto self = this->shared_from_this();
-				boost::asio::async_read(*socket_, boost::asio::buffer(request_->buffer(), request_->left_body_len()),
-					[self, this](boost::system::error_code ec, std::size_t length) {
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
+					[this](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
 							request_->set_state(data_proc_state::data_error);
 							call_back();
@@ -484,9 +605,8 @@ namespace wheel {
 			}
 
 			void do_read_part_data() {
-				auto self = this->shared_from_this();
-				boost::asio::async_read(*socket_, boost::asio::buffer(request_->buffer(), request_->left_body_size()),
-					[self, this](boost::system::error_code ec, std::size_t length) {
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_size()),
+					[this](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
 							request_->set_state(data_proc_state::data_error);
 							call_back();
@@ -534,10 +654,11 @@ namespace wheel {
 			}
 
 			void do_read_body() {
-				boost::asio::async_read(*socket_, boost::asio::buffer(request_->buffer(), request_->left_body_len()),
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
-							close();
+							release_session(boost::asio::error::make_error_code(
+								static_cast<boost::asio::error::basic_errors>(ec.value())));
 							return;
 						}
 
@@ -592,7 +713,7 @@ namespace wheel {
 					return;
 				}
 
-				boost::asio::async_write(*socket_, boost::asio::buffer(rep_str.data(), rep_str.size()),
+				boost::asio::async_write(socket(), boost::asio::buffer(rep_str.data(), rep_str.size()),
 					[this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 						this->handle_write(ec);
 				});
@@ -606,7 +727,8 @@ namespace wheel {
 				if (keep_alive_) {
 					do_read();
 				}else {
-					close();
+					release_session(boost::asio::error::make_error_code(
+						static_cast<boost::asio::error::basic_errors>(ec.value())));
 				}
 			}
 
@@ -738,6 +860,11 @@ namespace wheel {
 			}
 
 		private:
+#ifdef WHEEL_ENABLE_SSL
+			std::unique_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket&>> ssl_stream_{};
+#endif
+			bool is_ssl_ = false;
+			bool has_shake_ = false;
 			//callback handler to application layer
 			const std::string& static_dir_;
 			const http_handler& http_handler_;

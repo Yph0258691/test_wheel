@@ -8,7 +8,9 @@
 #include "htpp_define.hpp"
 #include "picohttpparser.hpp"
 #include "itoa.hpp"
+#ifdef WHEEL_ENABLE_GZIP
 #include "gzip.hpp"
+#endif
 
 namespace wheel {
 	namespace http_servers {

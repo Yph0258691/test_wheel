@@ -8,7 +8,10 @@
 #include "url_encode_decode.hpp"
 #include "http_multipart_reader.hpp"
 #include "upload_file.hpp"
+
+#ifdef WHEEL_ENABLE_GZIP
 #include "gzip.hpp"
+#endif
 
 namespace wheel {
 	namespace http_servers {
@@ -62,8 +65,9 @@ namespace wheel {
 			}
 
 			std::pair<phr_header*, size_t> get_headers() {
-				if (copy_headers_.empty())
-					return { headers_ , num_headers_ };
+				if (copy_headers_.empty()) {
+					return { {} , 0 };
+				}
 
 				num_headers_ = copy_headers_.size();
 				for (size_t i = 0; i < num_headers_; i++) {
@@ -76,10 +80,11 @@ namespace wheel {
 			}
 
 			std::string get_method() const {
-				if (method_len_ != 0)
-					return { method_ , method_len_ };
-
-				return { method_str_.data(), method_str_.length() };
+				if (method_len_ != 0) {
+					return  std::move(std::string(method_, method_len_));
+				}
+			
+				return std::move(std::string(method_str_.data(), method_str_.length()));
 			}
 
 			std::string get_url() const {
@@ -390,12 +395,15 @@ namespace wheel {
 			void fit_size() {
 				auto total = left_body_len_;// total_len();
 				auto size = buffer_.size();
-				if (size == MaxSize)
+				if (size == MaxSize) {
 					return;
 
+				}
+
 				if (total < MaxSize) {
-					if (total > size)
+					if (total > size) {
 						resize(total);
+					}
 				}
 				else {
 					resize(MaxSize);
@@ -413,7 +421,7 @@ namespace wheel {
 				cur_size_ = 0;
 				is_chunked_ = false;
 				state_ = data_proc_state::data_begin;
-				part_data_ = {};;
+				part_data_ = {};
 				queries_.clear();
 				cookie_str_.clear();
 				form_url_map_.clear();
@@ -422,6 +430,7 @@ namespace wheel {
 				utf8_character_pathinfo_params_.clear();
 				copy_headers_.clear();
 				files_.clear();
+				multipart_headers_.clear();
 			}
 
 			void set_multipart_headers(const multipart_headers& headers) {
@@ -431,8 +440,9 @@ namespace wheel {
 			}
 
 			std::string get_multipart_field_name(const std::string& field_name) const {
-				if (multipart_headers_.empty())
+				if (multipart_headers_.empty()) {
 					return {};
+				}
 
 				auto it = multipart_headers_.begin();
 				auto val = it->second;
@@ -539,6 +549,12 @@ namespace wheel {
 			}
 
 			std::string body() {
+#ifdef WHEEL_ENABLE_GZIP
+				if (has_gzip_ && !gzip_str_.empty()) {
+					return { gzip_str_.data(), gzip_str_.length() };
+				}
+#endif
+
 				return std::string(buffer_.data() + last_len_ + header_len_, body_len_);
 			}
 
@@ -562,6 +578,26 @@ namespace wheel {
 
 			bool has_gzip() const {
 				return has_gzip_;
+			}
+
+			std::map<std::string, std::string>get_cookies()const {
+				std::map<std::string, std::string> cookies;
+				if (!cookie_str_.empty()){
+					std::vector<std::string>cookies_vec;
+
+					wheel::unit::split(cookies_vec, cookie_str_, "; ");
+					for (auto iter : cookies_vec)
+					{
+						std::vector<std::string> cookie_key_vlaue;
+						wheel::unit::split(cookie_key_vlaue, iter, "=");
+						if (cookie_key_vlaue.size() == 2)
+						{
+							cookies[cookie_key_vlaue[0]] = cookie_key_vlaue[1];
+						}
+					}
+				}
+
+				return std::move(cookies);
 			}
 
 #ifdef WHEEL_ENABLE_GZIP
@@ -606,7 +642,7 @@ namespace wheel {
 				url_len_ = 0;
 
 				auto filename = get_multipart_field_name("filename");
-				multipart_headers_.clear();
+
 				if (!filename.empty()) {
 					copy_headers_.emplace_back("filename", std::move(filename));
 				}
@@ -681,7 +717,7 @@ namespace wheel {
 			std::string last_multpart_key_;
 			std::string part_data_;
 			data_proc_state state_ = data_proc_state::data_begin;
-			std::map<std::string, std::string> multipart_headers_;
+			std::unordered_map<std::string, std::string> multipart_headers_;
 			std::vector<std::pair<std::string, std::string>> copy_headers_;
 			std::map<std::string, std::string> queries_;
 			std ::string buffer_;

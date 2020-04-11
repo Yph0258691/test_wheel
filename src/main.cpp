@@ -28,7 +28,7 @@
 //  	Test t;
 //  	t.display();
 //  	ProxyEngine eng;
-// 	std::shared_ptr<wheel::tcp_socket::server> ptr = std::make_shared<wheel::tcp_socket::server>(std::bind(&ProxyEngine::OnMessage, &eng, std::placeholders::_1, std::placeholders::_2), 0, 8, 2, 6); //Æ«ÒÆºóµÄÖµ
+// 	std::shared_ptr<wheel::tcp_socket::server> ptr = std::make_shared<wheel::tcp_socket::server>(std::bind(&ProxyEngine::OnMessage, &eng, std::placeholders::_1, std::placeholders::_2), 0, 8, 2, 6); //Æ«ï¿½Æºï¿½ï¿½Öµ
 
 //  	ptr->init(9000, 4);
 
@@ -139,9 +139,9 @@
 // 	}
 
 // 	wheel::mysql::mysql_wrap::get_intance().connect("127.0.0.1", "root", "root", "test");
-// 	//¸üĞÂÖ¸¶¨Ò»ÌõÊı¾İ
+// 	//ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 // 	//wheel::mysql::mysql_wrap::get_intance().update(ns);
-// 	//¸üĞÂÖ¸¶¨nÌõÊı¾İ
+// 	//ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 // 	wheel::mysql::mysql_wrap::get_intance().update(vec);
 // 	//wheel::mysql::mysql_wrap::get_intance().insert(vec);
 
@@ -175,9 +175,9 @@
 // 	}
 
 // 	wheel::mysql::mysql_wrap::get_intance().connect("127.0.0.1", "root", "root", "test");
-// 	//¸üĞÂÖ¸¶¨Ò»ÌõÊı¾İ
+// 	//ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 // 	//wheel::mysql::mysql_wrap::get_intance().update(ns);
-// 	//¸üĞÂÖ¸¶¨nÌõÊı¾İ
+// 	//ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 // 	//wheel::mysql::mysql_wrap::get_intance().update(vec);
 // 	//wheel::mysql::mysql_wrap::get_intance().insert(vec);
 
@@ -197,30 +197,57 @@
 
 
 
+// #include <iostream>
+// #include <wheel/http_server.hpp>
+// #include <wheel/gzip.hpp>
+
+// int main()
+// {
+// 	std::string data = "111111111111111111111111assd";
+// 	std::string compress_data;
+// 	wheel::gzip_codec::compress(data, compress_data);
+// 	using namespace wheel::http_servers;
+// 	wheel::http_servers::http_server server;
+// 	server.listen(9090);
+// 	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
+// 		res.set_status_and_content(status_type::ok, "ï¿½ï¿½Æ¼ï¿½ï¿½Æ¨ï¿½ï¿½");
+// 		});
+
+
+// 	server.set_http_handler<GET, POST>("/test", [](request& req, response& res) {
+// 		std::string str = req.get_header_value("session");
+// 		std::string name = req.get_multipart_field_name("name");
+// 		std::string age = req.get_multipart_field_name("age");
+
+// 		res.set_status_and_content(status_type::ok, "ï¿½ï¿½Æ¼ï¿½ï¿½Æ¨ï¿½ï¿½");
+// 		});
+
+// 	server.run();
+// }
+
 #include <iostream>
 #include <wheel/http_server.hpp>
-#include <wheel/gzip.hpp>
 
 int main()
 {
-	std::string data = "111111111111111111111111assd";
-	std::string compress_data;
-	wheel::gzip_codec::compress(data, compress_data);
+	std::string str = "11";
+	if (!str.empty()){
+		int i = 100;
+	}
 	using namespace wheel::http_servers;
 	wheel::http_servers::http_server server;
+	//server.set_ssl_conf({ "server.crt", "server.key","1234561" });
+	server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key"});
 	server.listen(9090);
 	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
-		res.set_status_and_content(status_type::ok, "ÉòÆ¼´óÆ¨¹É");
+		res.set_status_and_content(status_type::ok, "hello world");
 		});
 
 
-	server.set_http_handler<GET, POST>("/test", [](request& req, response& res) {
-		std::string str = req.get_header_value("session");
-		std::string name = req.get_multipart_field_name("name");
-		std::string age = req.get_multipart_field_name("age");
-
-		res.set_status_and_content(status_type::ok, "ÉòÆ¼´óÆ¨¹É");
+	server.set_http_handler<GET, POST, OPTIONS>("/test", [](request& req, response& res) {
+		res.set_status_and_content(status_type::ok, "hello world");
 		});
 
 	server.run();
 }
+

@@ -101,7 +101,7 @@ else ()
   endif()
 
     #设置C++编辑选项			
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread -luuid -lboost_filesystem -lz")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -fpic -fPIC -lpthread -luuid -lboost_filesystem -lz -lssl -lcrypto")
 
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
@@ -133,6 +133,12 @@ if(USE_ZIBLIBARY)
      endif(CMAKE_SIZEOF_VOID_P EQUAL 8)  
    endif(CMAKE_SYSTEM_NAME MATCHES "Windows")
 endif(USE_ZIBLIBARY)
+
+#是否使用ssl通信
+option(USE_BOOSTSSLLIBARY "select to use boostssl libary" OFF)
+if(USE_BOOSTSSLLIBARY)
+  add_definitions(-DWHEEL_ENABLE_SSL)
+endif(USE_BOOSTSSLLIBARY)
 
 #提示默认安装路径
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)

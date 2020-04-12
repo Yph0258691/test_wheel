@@ -138,6 +138,7 @@ endif(USE_ZIBLIBARY)
 option(USE_BOOSTSSLLIBARY "select to use boostssl libary" OFF)
 if(USE_BOOSTSSLLIBARY)
   add_definitions(-DWHEEL_ENABLE_SSL)
+  MESSAGE(STATUS "please including OpenSSL libary") 
 endif(USE_BOOSTSSLLIBARY)
 
 #提示默认安装路径

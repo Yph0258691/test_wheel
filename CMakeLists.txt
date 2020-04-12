@@ -194,19 +194,23 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
   set(Boost_USE_STATIC_RUNTIME ON) 
  # add_definitions(-D_WIN32_WINNT=0x0501)
 
-  set(boost_lib_path "D:/project/C++Project/thirdpaty/boost/")
-  set(BOOST_ROOT ${boost_lib_path})
-
+  #set(boost_lib_path "D:/project/C++Project/thirdpaty/boost/")
+  #set(BOOST_ROOT ${boost_lib_path})
+  if(BOOST_ROOT)
+  else(BOOST_ROOT)
+    message(STATUS "please  cmake cmd pass set BOOT_ROOT path")
+  endif(BOOST_ROOT)
+  
   set(Boost_USE_DEBUG_LIBS         OFF) # ignore debug libs and
   set(Boost_USE_RELEASE_LIBS       ON)  # only find release libs
   find_package(Boost 1.69 REQUIRED)
   if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS}) 
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
      link_directories(${Boost_LIBRARY_DIRS}/x64/) 
 	 else()
-	 link_directories(${Boost_LIBRARY_DIRS}/x86/) 
-	endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	   link_directories(${Boost_LIBRARY_DIRS}/x86/) 
+   endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
   endif()
 else()
    #找不到直接报错

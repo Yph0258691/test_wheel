@@ -6,7 +6,21 @@ add_executable("${PROJECT_NAME}" ${SOURCE_MAIN})
 
 #链接指定的静态库
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-  TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic ws2_32 wsock32 libmysql zdll)
+  set(lib_name game_logic)
+  list(APPEND lib_name ws2_32)
+  list(APPEND lib_name wsock32)
+  list(APPEND lib_name libmysql)
+
+  if(USE_ZIBLIBARY)
+    list(APPEND lib_name zdll)
+  endif(USE_ZIBLIBARY)
+
+  if(USE_BOOSTSSLLIBARY)
+    list(APPEND lib_name ssleay32.lib)
+    list(APPEND lib_name libeay32.lib)
+  endif(USE_BOOSTSSLLIBARY)
+  
+  TARGET_LINK_LIBRARIES("${PROJECT_NAME}" ${lib_name})
   else()
    #注意在linux下的动态库，不能前面在lib的前缀，比如libmysql.so,这个和vs不同之处
    TARGET_LINK_LIBRARIES("${PROJECT_NAME}" game_logic mysql)

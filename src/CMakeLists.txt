@@ -16,8 +16,8 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
   endif(USE_ZIBLIBARY)
 
   if(USE_BOOSTSSLLIBARY)
-    list(APPEND lib_name ssleay32.lib)
-    list(APPEND lib_name libeay32.lib)
+    list(APPEND lib_name ssleay32)
+    list(APPEND lib_name libeay32)
   endif(USE_BOOSTSSLLIBARY)
   
   TARGET_LINK_LIBRARIES("${PROJECT_NAME}" ${lib_name})

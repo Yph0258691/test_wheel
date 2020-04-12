@@ -194,6 +194,7 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
   set(Boost_USE_STATIC_RUNTIME ON) 
  # add_definitions(-D_WIN32_WINNT=0x0501)
 
+  #设置boost库的安装路径(BOOST_ROOT是安装路径)
   #set(boost_lib_path "D:/project/C++Project/thirdpaty/boost/")
   #set(BOOST_ROOT ${boost_lib_path})
   if(BOOST_ROOT)

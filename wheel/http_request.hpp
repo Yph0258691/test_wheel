@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <sstream>
 #include "htpp_define.hpp"
 #include "picohttpparser.hpp"
 #include "url_encode_decode.hpp"
@@ -39,6 +40,24 @@ namespace wheel {
 			char* buffer(){
 				return &buffer_[cur_size_];
 			}
+
+			char* get_chunked_buffer(size_t cur_size_) {
+				return &buffer_[cur_size_];
+			}
+
+			void set_client_chunked_data(const char*str) {
+				client_chunked_data_.append(str);
+			}
+
+			std::string get_client_chunked_data()const {
+				return std::move(client_chunked_data_);
+			}
+
+			void reset_client_chunked_data(const char* str) {
+				client_chunked_data_.clear();
+				client_chunked_data_.append(str);
+			}
+
 			const char* buffer(size_t size) const {
 				return &buffer_[size];
 			}
@@ -113,6 +132,10 @@ namespace wheel {
 			std::string get_part_data() const {
 				if (has_gzip_) {
 					return { gzip_str_.data(), gzip_str_.length() };
+				}
+
+				if (is_chunked()){
+					return client_chunked_data_;
 				}
 
 				return part_data_;
@@ -253,6 +276,27 @@ namespace wheel {
 				return true;
 			}
 
+			//chunked pass form_urlencoded 
+			bool chunked_parse_form_urlencoded() {
+				form_url_map_.clear();
+
+#ifdef WHEEL_ENABLE_GZIP
+				if (has_gzip_) {
+					bool r = uncompress();
+					if (!r) {
+						return false;
+					}
+				}
+#endif
+				auto body_str = client_chunked_data_;
+				form_url_map_ = parse_query(body_str);
+				if (form_url_map_.empty()) {
+					return false;
+				}
+
+				return true;
+			}
+
 			bool is_http11() {
 				return minor_version_ == 1;
 			}
@@ -276,17 +320,19 @@ namespace wheel {
 				}
 					
 				check_gzip();
-				auto header_value = get_header_value("content-length");
-				if (header_value.empty()) {
+				const std::string body_len = get_header_value("content-length");
+				if (body_len.empty()) {
 					auto transfer_encoding = get_header_value("transfer-encoding");
 					if (transfer_encoding == "chunked") {
 						is_chunked_ = true;
-					}
 
-					body_len_ = 0;
+						body_len_ = strlen(buffer_.c_str()) - header_len_;
+					}else {
+						body_len_ = 0;
+					}
 				}
 				else {
-					set_body_len(atoll(header_value.data()));
+					set_body_len(atoll(body_len.data()));
 				}
 
 				auto cookie = get_header_value("cookie");
@@ -332,7 +378,6 @@ namespace wheel {
 				return size > MaxSize;
 			}
 
-
 			bool has_recieved_all() {
 				return (total_len() == current_size());
 			}
@@ -359,8 +404,10 @@ namespace wheel {
 			std::string get_header_value(std::string key) const {
 				if (copy_headers_.empty()) {
 					for (size_t i = 0; i < num_headers_; i++) {
-						if (wheel::unit::iequal(headers_[i].name, headers_[i].name_len, key.data(), key.length()))
+						if (wheel::unit::iequal(headers_[i].name, headers_[i].name_len, key.data())) {
 							return std::string(headers_[i].value, headers_[i].value_len);
+						}
+
 					}
 
 					return {};
@@ -380,6 +427,7 @@ namespace wheel {
 
 				return {};
 			}
+
 			bool update_size(size_t size) {
 				cur_size_ += size;
 				if (cur_size_ > MaxSize) {
@@ -431,6 +479,11 @@ namespace wheel {
 				copy_headers_.clear();
 				files_.clear();
 				multipart_headers_.clear();
+				url_ ="";
+				url_len_ = 0;
+				method_len_ = 0;
+				client_chunked_data_.clear();
+				memset(&buffer_[0], 0, buffer_.size());
 			}
 
 			void set_multipart_headers(const multipart_headers& headers) {
@@ -520,7 +573,6 @@ namespace wheel {
 				}
 			}
 
-
 			void close_upload_file() {
 				if (files_.empty()) {
 					return;
@@ -556,12 +608,6 @@ namespace wheel {
 #endif
 
 				return std::string(buffer_.data() + last_len_ + header_len_, body_len_);
-			}
-
-			int parse_chunked(size_t bytes_transferred) {
-				auto str = std::string(&buffer_[header_len_], bytes_transferred - header_len_);
-
-				return -1;
 			}
 
 			const char* current_part() const {
@@ -600,22 +646,32 @@ namespace wheel {
 				return std::move(cookies);
 			}
 
-#ifdef WHEEL_ENABLE_GZIP
 			bool uncompress(const std::string& str) {
 				if (str.empty()) {
 					return false;
 				}
 
+				bool r = true;
+#ifdef WHEEL_ENABLE_GZIP
 				gzip_str_.clear();
-				return gzip_codec::uncompress(str, gzip_str_);
+				r = gzip_codec::uncompress(str, gzip_str_);
+#endif
+
+				return r;
 			}
 
 			bool uncompress() {
+				bool r = true;
+#ifdef WHEEL_ENABLE_GZIP
 				gzip_str_.clear();
-				
-				return gzip_codec::uncompress(std::string(&buffer_[header_len_], body_len_), gzip_str_);
-			}
+				if (!is_chunked_) {
+					r = gzip_codec::uncompress(std::string(&buffer_[header_len_], body_len_), gzip_str_);
+				}else {
+					r = gzip_codec::uncompress(client_chunked_data_, gzip_str_);
+				}
 #endif
+				return r;
+			}
 
 		private:
 			std::string body() const {
@@ -709,17 +765,12 @@ namespace wheel {
 				return std::move(query);
 			}
 		private:
+			bool has_gzip_ = false;
+			bool is_chunked_ = false;
 			size_t last_len_ = 0; //for pipeline, last request buffer position
-			std::map<std::string, std::string> utf8_character_params_;
-			std::map<std::string, std::string> utf8_character_pathinfo_params_;
-			std::map<std::string, std::string> multipart_form_map_;
-			std::map<std::string, std::string> form_url_map_;
 			std::string last_multpart_key_;
 			std::string part_data_;
 			data_proc_state state_ = data_proc_state::data_begin;
-			std::unordered_map<std::string, std::string> multipart_headers_;
-			std::vector<std::pair<std::string, std::string>> copy_headers_;
-			std::map<std::string, std::string> queries_;
 			std ::string buffer_;
 			size_t cur_size_ = 0;
 			size_t num_headers_ = 0;
@@ -732,14 +783,21 @@ namespace wheel {
 			int header_len_;
 			size_t body_len_;
 			size_t left_body_len_ = 0;
-			bool is_chunked_ = false;
 			std::string raw_url_;
 			std::string cookie_str_;
 			std::string method_str_;
 			std::string url_str_;
-			bool has_gzip_ =false;
 			std::string gzip_str_;
+			//拼接起来的数据
+			std::string client_chunked_data_; 
 			std::vector<upload_file> files_;
+			std::unordered_map<std::string, std::string> multipart_headers_;
+			std::vector<std::pair<std::string, std::string>> copy_headers_;
+			std::map<std::string, std::string> queries_;
+			std::map<std::string, std::string> utf8_character_params_;
+			std::map<std::string, std::string> utf8_character_pathinfo_params_;
+			std::map<std::string, std::string> multipart_form_map_;
+			std::map<std::string, std::string> form_url_map_;
 			content_type http_type_ = content_type::unknown;
 			constexpr const static size_t MaxSize = 3 * 1024 * 1024;
 		};

@@ -14,8 +14,6 @@
 namespace wheel {
 	namespace {
 		const char DOT = '.';
-		const char SLASH = '/';
-		const std::string INDEX = "index";
 	}
 
 	namespace http_servers {
@@ -111,8 +109,9 @@ namespace wheel {
 				std::tuple<AP...> tp(std::move(ap)...);
 				bool r = do_ap_before(req, res, tp);
 
-				if (!r)
+				if (!r) {
 					return;
+				}
 
 				if constexpr (std::is_void<result_type>::value) {
 					//business

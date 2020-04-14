@@ -17,16 +17,23 @@ namespace wheel {
 		class response {
 		public:
 			response() {
-				std::string mbstr;
-				mbstr.resize(50);
-				std::time_t tm = std::chrono::system_clock::to_time_t(last_time_);
-				std::strftime(&mbstr[0], mbstr.size(), "%a, %d %b %Y %T GMT", std::localtime(&tm));
-				last_date_str_ = mbstr;
+			}
+
+			void enable_response_time(bool enable) {
+				need_response_time_ = enable;
+				if (need_response_time_) {
+					std::string mbstr;
+					mbstr.resize(50);
+					std::time_t tm = std::chrono::system_clock::to_time_t(last_time_);
+					std::strftime(&mbstr[0],mbstr.size(), "%a, %d %b %Y %T GMT", std::localtime(&tm));
+					mbstr.resize(strlen(mbstr.c_str()));
+					last_date_str_ = mbstr;
+				}
 			}
 
 			~response() = default;
-			std::string& response_str() {
-				return rep_str_;
+			std::string response_str() {
+				return std::move(rep_str_);
 			}
 
 			template<status_type status, res_content_type content_type, size_t N>
@@ -37,19 +44,14 @@ namespace wheel {
 
 				rep_str_.append(status_str).append(len_str.data(), len_str.size()).append(type_str).append(rep_server);
 
-				using namespace std::chrono_literals;
-
-				auto t = std::chrono::system_clock::now();
-				if (t - last_time_ > 1s) {
-					char mbstr[50];
-					std::time_t tm = std::chrono::system_clock::to_time_t(t);
-					std::strftime(mbstr, sizeof(mbstr), "%a, %d %b %Y %T GMT", std::localtime(&tm));
-					last_date_str_ = mbstr;
-					rep_str_.append("Date: ").append(mbstr).append("\r\n\r\n");
-					last_time_ = t;
+				if (need_response_time_){
+					append_respone_date_time();
 				}
-				else {
-					rep_str_.append("Date: ").append(last_date_str_).append("\r\n\r\n");
+
+				rep_str_.append("\r\n");
+				
+				if (strlen(content)==0){
+					return;
 				}
 
 				rep_str_.append(content);
@@ -65,27 +67,28 @@ namespace wheel {
 					headers_.clear();
 				}
 
-				char temp[20] = {};
-				itoa_fwd((int)content_.size(), temp);
-				rep_str_.append("Content-Length: ").append(temp).append("\r\n");
+				std::string temp;
+				temp.resize(64);
+				itoa_fwd((int)content_.size(),&temp[0]);
+				std::string buff(temp.c_str(), strlen(temp.c_str()));
+				rep_str_.append("Content-Length: ").append(buff).append("\r\n");
+				if (rep_str_.empty()) {
+					return;
+				}
+
 				if (res_type_ != res_content_type::none) {
 					rep_str_.append(get_content_type(res_type_));
 				}
-				rep_str_.append("Server: http_server\r\n");
 
-				using namespace std::chrono_literals;
+				rep_str_.append(rep_server);
 
-				auto t = std::chrono::system_clock::now();
-				if (t - last_time_ > 1s) {
-					char mbstr[50];
-					std::time_t tm = std::chrono::system_clock::to_time_t(t);
-					std::strftime(mbstr, sizeof(mbstr), "%a, %d %b %Y %T GMT", std::localtime(&tm));
-					last_date_str_ = mbstr;
-					rep_str_.append("Date: ").append(mbstr).append("\r\n\r\n");
-					last_time_ = t;
+				if (need_response_time_) {
+					append_respone_date_time();
 				}
-				else {
-					rep_str_.append("Date: ").append(last_date_str_).append("\r\n\r\n");
+
+				rep_str_.append("\r\n");
+				if (content_.empty()){
+					return;
 				}
 
 				rep_str_.append(std::move(content_));
@@ -265,10 +268,6 @@ namespace wheel {
 #endif
 			}
 
-			std::vector<std::string> raw_content() {
-				return cache_data;
-			}
-
 			void redirect(const std::string& url, bool is_forever = false)
 			{
 				add_header("Location", url.c_str());
@@ -288,7 +287,6 @@ namespace wheel {
 				proc_continue_ = true;
 				delay_ = false;
 				headers_.clear();
-				cache_data.clear();
 				content_.clear();
 			}
 		private:
@@ -296,22 +294,43 @@ namespace wheel {
 				phr_header* headers = req_headers_.first;
 				size_t num_headers = req_headers_.second;
 				for (size_t i = 0; i < num_headers; i++) {
-					if (wheel::unit::iequal(headers[i].name, headers[i].name_len, key.data(), key.length()))
+					if (wheel::unit::iequal(headers[i].name, headers[i].name_len, key.data())) {
 						return std::string(headers[i].value, headers[i].value_len);
+					}
 				}
 
 				return {};
 			}
 
+			void append_respone_date_time() {
+				//后面可以跟着秒
+				using namespace std::chrono_literals;
+
+				auto t = std::chrono::system_clock::now();
+				if (t - last_time_ > 1s) {
+					std::string mbstr;
+					mbstr.resize(50);
+					std::time_t tm = std::chrono::system_clock::to_time_t(t);
+					std::strftime(&mbstr[0], sizeof(mbstr), "%a, %d %b %Y %T GMT", std::localtime(&tm));
+					mbstr.resize(strlen(mbstr.c_str()));
+					last_date_str_ = mbstr;
+					rep_str_.append("Date: ").append(mbstr).append("\r\n");
+					last_time_ = t;
+				}
+				else {
+					rep_str_.append("Date: ").append(last_date_str_).append("\r\n");
+				}
+			}
+private:
 			std::string raw_url_;
 			std::vector<std::pair<std::string, std::string>> headers_;
-			std::vector<std::string> cache_data;
 			std::string content_;
 			content_type body_type_ = content_type::unknown;
 			status_type status_ = status_type::init;
 			bool proc_continue_ = true;
 			std::string chunk_size_;
 
+			//piple传输，可以不发送
 			bool delay_ = false;
 
 			std::pair<phr_header*, size_t> req_headers_;
@@ -321,6 +340,7 @@ namespace wheel {
 			std::chrono::system_clock::time_point last_time_ = std::chrono::system_clock::now();
 			std::string last_date_str_;
 			res_content_type res_type_;
+			bool need_response_time_ = false;
 		};
 	}
 }

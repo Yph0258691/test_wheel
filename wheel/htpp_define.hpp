@@ -200,7 +200,7 @@ namespace wheel {
 		const std::string rep_close = "Connection: close     \r\n";
 		const std::string rep_len = "Content-Length: ";
 		const std::string rep_crcf = "\r\n";
-		const std::string rep_server = "Server: cinatra\r\n";
+		const std::string rep_server = "Server: http_server\r\n";
 
 		static const char name_value_separator[] = { ':', ' ' };
 

@@ -224,30 +224,124 @@
 
 // 	server.run();
 // }
+//
+//#include <iostream>
+//#include <wheel/http_server.hpp>
+//
+//int main()
+//{
+//	std::string str = "11";
+//	if (!str.empty()){
+//		int i = 100;
+//	}
+//	using namespace wheel::http_servers;
+//	wheel::http_servers::http_server server;
+//	//server.set_ssl_conf({ "server.crt", "server.key","1234561" });
+//	server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key"});
+//	server.listen(9090);
+//	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
+//		res.set_status_and_content(status_type::ok, "hello world");
+//		});
+//
+//
+//	server.set_http_handler<GET, POST, OPTIONS>("/test", [](request& req, response& res) {
+//		res.set_status_and_content(status_type::ok, "hello world");
+//		});
+//
+//	server.run();
+//}
+//
 
+#define WHEEL_ENABLE_SSL
+//#define WHEEL_ENABLE_GZIP
 #include <iostream>
 #include <wheel/http_server.hpp>
+#include <wheel/encoding_conversion.hpp>
+
+using namespace wheel::http_servers;
+wheel::http_servers::http_server server;
+
+//校验的切面
+struct check {
+	bool before(request& req, response& res) {
+		std::cout << "before check" << std::endl;
+		return true;
+	}
+
+	bool after(request& req, response& res) {
+		std::cout << "after check" << std::endl;
+		return true;
+	}
+};
+
 
 int main()
 {
+
+	std::string str1234 = "我是好人";
+
+	std::wstring w_name = wheel::char_encoding::encoding_conversion::to_wstring(str1234);
+	std::cout << str1234 << std::endl;
+	std::string wwwwww = wheel::char_encoding::encoding_conversion::to_string(w_name);
+	//std::string zip_str;
+	//wheel::gzip_codec::compress(str1234, zip_str);
+	std::string s1123 = wheel::char_encoding::encoding_conversion::gbk_to_utf8(str1234);
+	std::string str12345 = wheel::char_encoding::encoding_conversion::utf8_to_gbk(s1123);
+	std::string test_str;
+	test_str.resize(1024);
+
+	memcpy(&test_str[0], "123", 3);
+
+	memcpy(&test_str[3], "456", 3);
+
+	memcpy(&test_str[6], "456", 3);
+
 	std::string str = "11";
-	if (!str.empty()){
+	if (!str.empty()) {
 		int i = 100;
 	}
-	using namespace wheel::http_servers;
-	wheel::http_servers::http_server server;
+
 	//server.set_ssl_conf({ "server.crt", "server.key","1234561" });
-	server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key"});
+	server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key" });
+	//server.enable_response_time(true);
 	server.listen(9090);
 	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
 		res.set_status_and_content(status_type::ok, "hello world");
 		});
 
 
-	server.set_http_handler<GET, POST, OPTIONS>("/test", [](request& req, response& res) {
-		res.set_status_and_content(status_type::ok, "hello world");
-		});
+	server.set_http_handler<GET, POST, OPTIONS, PUT>("/test", [](request& req, response& res) {
+
+		//	std::string str = req.get_header_value("Accept-Encoding");//获取包头值
+		//	                                                    
+		//	std::string str1 = req.get_query_value("name");//获取包体值
+		//	std::string str23133 = wheel::char_encoding::encoding_conversion::utf8_to_gbk(str1);
+		//	std::string str2 = req.get_query_value("age");//获取包体值
+
+		//	std::string part_data = req.get_part_data();
+		////	std::string str3 = req.get_query_value("sex");//获取包体值
+		//	//std::string body = req.body();
+		//	//跨域解决
+		//	res.add_header("Access-Control-Allow-origin", "*");
+		//	//res.set_status_and_content(status_type::ok,"hello world");
+		//	//res.set_status_and_content(status_type::ok, "hello world",res_content_type::string);
+		//	std::string str4 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多");
+		//	res.set_status_and_content(status_type::ok,std::move(str4), res_content_type::string);
+
+		std::string str1 = req.get_query_value("name");//获取包体值
+		std::string str23133 = wheel::char_encoding::encoding_conversion::utf8_to_gbk(str1);
+		std::string str2 = req.get_query_value("age");//获取包体值
+
+		std::string part_data = req.get_part_data();
+		std::string name1 = wheel::char_encoding::encoding_conversion::utf8_to_gbk(req.get_query_value("name1"));
+		std::cout << name1 << std::endl;
+		std::string path = wheel::char_encoding::encoding_conversion::utf8_to_gbk(req.get_query_value("path"));
+		res.add_header("Access-Control-Allow-origin", "*");
+		//res.set_status_and_content(status_type::ok,"hello world");
+		//res.set_status_and_content(status_type::ok, "hello world",res_content_type::string);
+		std::string str4 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多");
+		res.set_status_and_content(status_type::ok, std::move(str4), res_content_type::string);
+		}, check{});
 
 	server.run();
 }
-

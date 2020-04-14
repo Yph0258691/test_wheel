@@ -157,7 +157,7 @@ namespace wheel {
 
 		//float小端转换
 		static float ntohf(uint32_t p){
-			float f = ((p >> 16) & 0x7fff);
+			float f = static_cast<float>(((p >> 16) & 0x7fff));
 			f += (p & 0xffff) / 65536.0f;
 			if (((p >> 31) & 0x1) == 0x1) { 
 				f = -f;
@@ -575,22 +575,11 @@ namespace wheel {
 			s.erase(s.find_last_not_of(" ") + 1);
 		}
 
-		static bool iequal(const char* s, size_t l, const char* t, size_t size) {
-			if (size != l)
-				return false;
-
-			for (size_t i = 0; i < l; i++) {
-				if (std::tolower(s[i]) != std::tolower(t[i]))
-					return false;
-			}
-
-			return true;
-		}
-
-
 		static bool iequal(const char* s, size_t l, const char* t) {
-			if (strlen(t) != l)
+			std::size_t size = strlen(t);
+			if (size != l) {
 				return false;
+			}
 
 			for (size_t i = 0; i < l; i++) {
 				if (std::tolower(s[i]) != std::tolower(t[i]))
@@ -604,6 +593,18 @@ namespace wheel {
 			std::ostringstream stream;
 			stream << std::hex << value;
 			return stream.str();
+		}
+
+		static size_t stringHex_to_int(const char*hex_str, char* offset = nullptr)
+		{
+			size_t len = strlen(hex_str);
+			if (len > 2){
+				if (hex_str[0] == '0' && hex_str[1] == 'x')
+				{
+					return strtol(hex_str, &offset, 0);
+				}
+			}
+			return strtol(hex_str, &offset, 16);
 		}
 
 		static std::string find_substr(const std::string& str, const std::string key, const std::string& diml) {
@@ -707,7 +708,7 @@ namespace wheel {
 			if constexpr (size > 0) {
 				using expander = int[];
 				(void)expander {
-					((std::forward<F>(f)(std::get<Idx>(t))))...
+					((std::forward<F>(f)(std::get<Idx>(t))),false)...
 				};
 			}
 		}
@@ -718,7 +719,7 @@ namespace wheel {
 			if constexpr (size > 0) {
 				using expander = int[];
 				(void)expander {
-					((std::forward<F>(f)(std::get<size - Idx - 1>(t))))...
+					((std::forward<F>(f)(std::get<size - Idx - 1>(t))),false)...
 				};
 			}
 
@@ -802,7 +803,7 @@ namespace wheel {
 		static void random_str(std::string& random_str, int len) {
 			std::unordered_set<char> set;
 			for (int i = 0;i < len;i++) {
-				static std::default_random_engine e(time(0));
+				static std::default_random_engine e((std::size_t)time(0));
 				static std::uniform_int_distribution<unsigned int> u(1, 3);
 				uint32_t ret = u(e);
 				char c = 0;

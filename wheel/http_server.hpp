@@ -68,6 +68,11 @@ namespace wheel {
 				std::cout << ec.message() << std::endl;
 			}
 
+			//应答的时候是否需要加上时间
+			void enable_response_time(bool enable) {
+				need_response_time_ = enable;
+			}
+
 #ifdef WHEEL_ENABLE_SSL
 			void set_ssl_conf(ssl_configure conf) {
 				ssl_conf_ = std::move(conf);
@@ -91,7 +96,7 @@ namespace wheel {
 				std::shared_ptr<http_tcp_handle > new_session = nullptr;
 				try
 				{
-					new_session = std::make_shared<http_tcp_handle>(ios_,http_handler_, upload_dir_, ssl_conf_);
+					new_session = std::make_shared<http_tcp_handle>(ios_,http_handler_, upload_dir_, ssl_conf_,need_response_time_);
 				}
 				catch (const std::exception & ex)
 				{
@@ -172,6 +177,7 @@ namespace wheel {
 			std::unique_ptr<boost::asio::ip::tcp::acceptor> accept_{};
 			std::shared_ptr<boost::asio::io_service>ios_{};
 			std::vector<std::shared_ptr<std::thread>> ios_threads_;
+			bool need_response_time_ = false;
 		};
 	}
 }

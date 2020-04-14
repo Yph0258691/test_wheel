@@ -801,8 +801,7 @@ namespace wheel {
 				const std::string rep_str = response_->response_str();
 				if (rep_str.empty()) {
 					std::cout << "send fail:message is empty" << std::endl;
-					//继续读，但不用断开
-					do_read();
+					response_back(status_type::bad_gateway, "send message is empty");
 					return;
 				}
 

@@ -250,7 +250,6 @@
 //
 //	server.run();
 //}
-//
 
 #define WHEEL_ENABLE_SSL
 //#define WHEEL_ENABLE_GZIP
@@ -269,6 +268,8 @@ struct check {
 	}
 
 	bool after(request& req, response& res) {
+		const std::string str = res.response_str();
+		std::cout << str << std::endl;
 		std::cout << "after check" << std::endl;
 		return true;
 	}
@@ -277,15 +278,36 @@ struct check {
 
 int main()
 {
+	uint8_t bytes[2] = {0};
+	unsigned short int test_data = 65518;
+	bytes[0] =(uint8_t)(test_data >> 8);
+	bytes[1] = (uint8_t)(test_data &0xFF);
 
-	std::string str1234 = "我是好人";
+	std::string str1234 = "我是好人我問三十多萬多無多無多無多多";
 
 	std::wstring w_name = wheel::char_encoding::encoding_conversion::to_wstring(str1234);
+	if (wheel::char_encoding::encoding_conversion::is_valid_gbk(str1234.c_str())){
+		int i = 10;
+	}
 	std::cout << str1234 << std::endl;
 	std::string wwwwww = wheel::char_encoding::encoding_conversion::to_string(w_name);
+
+
 	//std::string zip_str;
 	//wheel::gzip_codec::compress(str1234, zip_str);
+	//uf8
 	std::string s1123 = wheel::char_encoding::encoding_conversion::gbk_to_utf8(str1234);
+	std::u16string u16_str = wheel::char_encoding::encoding_conversion::utf8_to_utf16(s1123);
+	std::cout << "u16_str:"<<u16_str.c_str()<<std::endl;
+
+	std::u32string u32_str1 = wheel::char_encoding::encoding_conversion::utf8_to_utf32(s1123);
+	std::cout << "u32_str1:" << u32_str1.c_str() << std::endl;
+	std::u32string u32_str2 = wheel::char_encoding::encoding_conversion::utf16_to_utf32(u16_str);
+	std::cout << "u32_str2:" << u32_str2.c_str() << std::endl;
+
+
+
+
 	std::string str12345 = wheel::char_encoding::encoding_conversion::utf8_to_gbk(s1123);
 	std::string test_str;
 	test_str.resize(1024);
@@ -297,12 +319,12 @@ int main()
 	memcpy(&test_str[6], "456", 3);
 
 	std::string str = "11";
-	if (!str.empty()) {
+	if (!str.empty()){
 		int i = 100;
 	}
 
 	//server.set_ssl_conf({ "server.crt", "server.key","1234561" });
-	server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key" });
+	server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key"});
 	//server.enable_response_time(true);
 	server.listen(9090);
 	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
@@ -310,23 +332,23 @@ int main()
 		});
 
 
-	server.set_http_handler<GET, POST, OPTIONS, PUT>("/test", [](request& req, response& res) {
+	server.set_http_handler<GET, POST, OPTIONS,PUT>("/test", [](request& req, response& res) {
 
-		//	std::string str = req.get_header_value("Accept-Encoding");//获取包头值
-		//	                                                    
-		//	std::string str1 = req.get_query_value("name");//获取包体值
-		//	std::string str23133 = wheel::char_encoding::encoding_conversion::utf8_to_gbk(str1);
-		//	std::string str2 = req.get_query_value("age");//获取包体值
+	//	std::string str = req.get_header_value("Accept-Encoding");//获取包头值
+	//	                                                    
+	//	std::string str1 = req.get_query_value("name");//获取包体值
+	//	std::string str23133 = wheel::char_encoding::encoding_conversion::utf8_to_gbk(str1);
+	//	std::string str2 = req.get_query_value("age");//获取包体值
 
-		//	std::string part_data = req.get_part_data();
-		////	std::string str3 = req.get_query_value("sex");//获取包体值
-		//	//std::string body = req.body();
-		//	//跨域解决
-		//	res.add_header("Access-Control-Allow-origin", "*");
-		//	//res.set_status_and_content(status_type::ok,"hello world");
-		//	//res.set_status_and_content(status_type::ok, "hello world",res_content_type::string);
-		//	std::string str4 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多");
-		//	res.set_status_and_content(status_type::ok,std::move(str4), res_content_type::string);
+	//	std::string part_data = req.get_part_data();
+	////	std::string str3 = req.get_query_value("sex");//获取包体值
+	//	//std::string body = req.body();
+	//	//跨域解决
+	//	res.add_header("Access-Control-Allow-origin", "*");
+	//	//res.set_status_and_content(status_type::ok,"hello world");
+	//	//res.set_status_and_content(status_type::ok, "hello world",res_content_type::string);
+	//	std::string str4 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多");
+	//	res.set_status_and_content(status_type::ok,std::move(str4), res_content_type::string);
 
 		std::string str1 = req.get_query_value("name");//获取包体值
 		std::string str23133 = wheel::char_encoding::encoding_conversion::utf8_to_gbk(str1);
@@ -345,3 +367,5 @@ int main()
 
 	server.run();
 }
+
+

@@ -5,18 +5,10 @@
 #include <locale>
 #include <utility>
 #include <string>
+#include "utf8_gbk_mem.hpp"
 
 namespace wheel {
 	namespace char_encoding {
-		template<class Facet>
-		struct deletable_facet : Facet
-		{
-			using Facet::Facet; // 继承构造函数
-			~deletable_facet() {}
-		};
-
-		using mbs_facet_t = deletable_facet<std::codecvt_byname<wchar_t, char, std::mbstate_t>>;
-
 		class encoding_conversion {
 		public:
 			encoding_conversion() = delete;
@@ -34,11 +26,6 @@ namespace wheel {
 				desrt.resize(size);
 				wcstombs(&desrt[0], wstr.c_str(), size);
 				return std::move(desrt);
-
-				//此方法调试时看不见中文
-				//setlocale(LC_ALL, "");
-				//std::wstring_convert<mbs_facet_t> converter(new mbs_facet_t(std::locale().name()));
-				//return std::move(converter.to_bytes(wstr));
 			}
 
 			static std::wstring   to_wstring(const std::string& str)
@@ -51,21 +38,30 @@ namespace wheel {
 				//算出代转wstring字节
 				mbstowcs(&w_str[0], str.c_str(), str.size());
 				return std::move(w_str);
-
-				//此方法调试时看不见中文
-				//setlocale(LC_ALL, "");
-				//std::wstring_convert<mbs_facet_t> converter(new mbs_facet_t(std::locale().name()));
-				//return std::move(converter.from_bytes(str));
 			}
 
 			static std::string    gbk_to_utf8(const std::string& str)
 			{
-				return to_utf8(from_gbk(str));
+				constexpr size_t offset = 8;//8倍
+				std::int64_t size = (str.size()* offset);
+				std::string out_str;
+				out_str.resize(size);
+				size = gbk_to_utf8_((char*)&str[0], &out_str[0]);
+
+				out_str.resize(size);
+				return std::move(out_str);
 			}
 
-			static std::string   utf8_to_gbk(const std::string& str)
+			static std::string  utf8_to_gbk(const std::string& str)
 			{
-				return to_gbk(from_utf8(str));
+				constexpr size_t offset = 8;//8倍
+				std::int64_t size = (str.size() * offset);
+				std::string out_str;
+				out_str.resize(size);
+				size = utf8_to_gbk_((char*)&str[0], &out_str[0]);
+
+				out_str.resize(size);
+				return std::move(out_str);
 			}
 
 			static std::u16string utf8_to_utf16(const std::string& str)
@@ -210,53 +206,42 @@ namespace wheel {
 				return true;
 			}
 
-		private:
-			static std::string    to_gbk(const std::wstring& wstr)
+			static bool is_valid_gbk(const char* str)
 			{
-				std::wstring_convert<mbs_facet_t> conv(new mbs_facet_t(gbk_locale_name));
-				std::string  str = conv.to_bytes(wstr);
-				return str;
-
+				unsigned int nBytes = 0;//GBK可用1-2个字节编码,中文两个 ,英文一个
+				unsigned char chr = *str;
+				bool bAllAscii = true; //如果全部都是ASCII,
+				for (unsigned int i = 0; str[i] != '\0'; ++i) {
+					chr = *(str + i);
+					if ((chr & 0x80) != 0 && nBytes == 0) {// 判断是否ASCII编码,如果不是,说明有可能是GBK
+						bAllAscii = false;
+					}
+					if (nBytes == 0) {
+						if (chr >= 0x80) {
+							if (chr >= 0x81 && chr <= 0xFE) {
+								nBytes = +2;
+							}
+							else {
+								return false;
+							}
+							nBytes--;
+						}
+					}
+					else {
+						if (chr < 0x40 || chr>0xFE) {
+							return false;
+						}
+						nBytes--;
+					}//else end
+				}
+				if (nBytes != 0) {   //违返规则
+					return false;
+				}
+				if (bAllAscii) { //如果全部都是ASCII, 也是GBK
+					return true;
+				}
+				return true;
 			}
-			static std::wstring   from_gbk(const std::string& str)
-			{
-				std::wstring_convert<mbs_facet_t> conv(new mbs_facet_t(gbk_locale_name));
-				std::wstring wstr = conv.from_bytes(str);
-				return wstr;
-
-			}
-			static std::string    to_utf8(const std::wstring& wstr)
-			{
-#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__)
-				std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-				return convert.to_bytes((char16_t*)wstr.data(), (char16_t*)wstr.data() + wstr.size());
-#elif defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
-				std::wstring_convert<std::codecvt_utf8<wchar_t>> convert;
-				return convert.to_bytes(wstr.data(), wstr.data() + wstr.size());
-#elif defined(_WIN32) || defined(_WIN64)
-				std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> convert;
-				return convert.to_bytes(wstr.data(), wstr.data() + wstr.size());
-#endif
-			}
-			static std::wstring   from_utf8(const std::string& str)
-			{
-#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__)
-				std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-				auto tmp = convert.from_bytes(str.data(), str.data() + str.size());
-				return std::wstring(tmp.data(), tmp.data() + tmp.size());
-#elif defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
-				std::wstring_convert<std::codecvt_utf8<wchar_t>> convert;
-				return convert.from_bytes(str.data(), str.data() + str.size());
-#elif defined(_WIN32) || defined(_WIN64)
-				std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> convert;
-				return convert.from_bytes(str.data(), str.data() + str.size());
-#endif
-			}
-#if defined(_WIN32) || defined(_WIN64)
-			constexpr static const char* gbk_locale_name = ".936";
-#else
-			constexpr static const char* gbk_locale_name = "zh_CN.GBK";
-#endif
 		};
 	}
 }

@@ -29,9 +29,20 @@ namespace wheel {
 					return;
 				}
 
-				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
-				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
-				
+				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
+				boost::system::error_code ec;
+				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_);
+				boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
+				//一定要调用open否则会监听失败
+				accept_->open(endpoint.protocol());
+				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
+				accept_->bind(endpoint,ec);
+				accept_->listen(boost::asio::socket_base::max_connections, ec);
+				if (ec){
+					std::cout << "服务器监听失败:"<<ec.message() << std::endl;
+					return;
+				}
+
 				start_accpect();
 			}
 

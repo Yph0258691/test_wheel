@@ -50,20 +50,24 @@ namespace wheel {
 					return;
 				}
 
-				try{
-					accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
-				}
-				catch (const std::exception&ex){
-					std::cout << ex.what() << std::endl;
-					accept_ = nullptr;
-				}
-				
-				if (accept_ == nullptr) {
+				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
+				boost::system::error_code ec;
+				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_);
+				boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
+				//一定要调用open否则会监听失败
+				accept_->open(endpoint.protocol());
+				//端口复用
+				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
+				accept_->bind(endpoint, ec);
+				accept_->listen(boost::asio::socket_base::max_connections, ec);
+				if (ec) {
+					std::cout << "服务器监听失败:" << ec.message() << std::endl;
 					return;
 				}
 
-				//端口复用
-				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+				if (accept_ == nullptr) {
+					return;
+				}
 
 				for (int i = 0;i < connect_pool;i++) {
 					make_session();

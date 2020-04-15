@@ -103,17 +103,10 @@ namespace wheel {
 			}
 
 			std::string get_method() const {
-				if (method_len_ != 0) {
-					return  std::move(std::string(method_, method_len_));
-				}
-			
 				return std::move(std::string(method_str_.data(), method_str_.length()));
 			}
 
 			std::string get_url() const {
-				if (method_len_ != 0)
-					return { url_, url_len_ };
-
 				return { url_str_.data(), url_str_.length() };
 			}
 
@@ -314,15 +307,19 @@ namespace wheel {
 					copy_headers_.clear();
 				}
 
+				const char* method = nullptr;
+				size_t method_len = 0;
+				const char* url = nullptr;
+				size_t url_len = 0;
 				num_headers_ = sizeof(headers_) / sizeof(headers_[0]);
-				header_len_ = phr_parse_request(buffer_.data(), cur_size_, &method_,
-					&method_len_, &url_, &url_len_,
+				header_len_ = phr_parse_request(buffer_.data(), cur_size_, &method,
+					&method_len, &url, &url_len,
 					&minor_version_, headers_, &num_headers_, last_len);
 
 				if (header_len_ < 0) {
 					return header_len_;
 				}
-					
+
 				check_gzip();
 				const std::string body_len = get_header_value("content-length");
 				if (body_len.empty()) {
@@ -344,7 +341,7 @@ namespace wheel {
 					cookie_str_ = std::string(cookie.data(), cookie.length());
 				}
 
-				raw_url_ ={ url_, url_len_ };
+				raw_url_ ={ url, url_len };
 				size_t npos = raw_url_.find('/');
 				if (npos == std::string::npos) {
 					return -1;
@@ -352,9 +349,12 @@ namespace wheel {
 					
 				size_t pos = raw_url_.find('?');
 				if (pos != std::string::npos) {
-					queries_ = parse_query(std::string{ raw_url_ }.substr(pos + 1, url_len_ - pos - 1));
-					url_len_ = pos;
+					queries_ = parse_query(std::string{ raw_url_ }.substr(pos + 1, url_len - pos - 1));
+					url_len = pos;
 				}
+
+				method_str_ = std::string(method, method_len);
+				url_str_ = std::string(url, url_len);
 
 				return header_len_;
 			}
@@ -483,9 +483,6 @@ namespace wheel {
 				copy_headers_.clear();
 				files_.clear();
 				multipart_headers_.clear();
-				url_ ="";
-				url_len_ = 0;
-				method_len_ = 0;
 				client_chunked_data_.clear();
 				memset(&buffer_[0], 0,buffer_size());
 			}
@@ -692,15 +689,8 @@ namespace wheel {
 				buffer_.resize(size);
 			}
 
+
 			void copy_method_url_headers() {
-				if (method_len_ == 0)
-					return;
-
-				method_str_ = std::string(method_, method_len_);
-				url_str_ = std::string(url_, url_len_);
-				method_len_ = 0;
-				url_len_ = 0;
-
 				auto filename = get_multipart_field_name("filename");
 
 				if (!filename.empty()) {
@@ -779,10 +769,6 @@ namespace wheel {
 			size_t cur_size_ = 0;
 			size_t num_headers_ = 0;
 			struct phr_header headers_[32];
-			const char* method_ = nullptr;
-			size_t method_len_ = 0;
-			const char* url_ = nullptr;
-			size_t url_len_ = 0;
 			int minor_version_;
 			int header_len_;
 			size_t body_len_;

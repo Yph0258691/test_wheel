@@ -29,21 +29,26 @@ namespace wheel {
 					return;
 				}
 
+				if (port_in_use(port)){
+					std::cout << "port reuse" << std::endl;
+					return;
+				}
+
 				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 				boost::system::error_code ec;
 				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_);
-				boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
+
 				//一定要调用open否则会监听失败
-				accept_->open(endpoint.protocol());
+				accept_->open(boost::asio::ip::tcp::v4());
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
-				accept_->bind(endpoint,ec);
+				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port),ec);
 				accept_->listen(boost::asio::socket_base::max_connections, ec);
 				if (ec){
 					std::cout << "服务器监听失败:"<<ec.message() << std::endl;
 					return;
 				}
 
-				start_accpect();
+				make_session();
 			}
 
 			//set http handlers
@@ -90,6 +95,19 @@ namespace wheel {
 			}
 #endif
 		private:
+			bool port_in_use(unsigned short port) {
+				boost::asio::io_service svc;
+				boost::asio::ip::tcp::acceptor acept(svc);
+
+				boost::system::error_code ec;
+				acept.open(boost::asio::ip::tcp::v4(), ec);
+				acept.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
+				acept.bind({ boost::asio::ip::tcp::v4(), port }, ec);
+
+				return ec == boost::asio::error::address_in_use;
+			}
+
+
 			void join_all() {
 				//加入之后需要等待,避免线程不回收
 				for (auto& t : ios_threads_) {
@@ -99,7 +117,8 @@ namespace wheel {
 				}
 			}
 
-			void start_accpect() {
+		private:
+			void make_session() {
 				if (accept_ == nullptr) {
 					return;
 				}
@@ -107,7 +126,7 @@ namespace wheel {
 				std::shared_ptr<http_tcp_handle > new_session = nullptr;
 				try
 				{
-					new_session = std::make_shared<http_tcp_handle>(ios_,http_handler_, upload_dir_, ssl_conf_,need_response_time_);
+					new_session = std::make_shared<http_tcp_handle>(ios_, http_handler_, upload_dir_, ssl_conf_, need_response_time_);
 				}
 				catch (const std::exception & ex)
 				{
@@ -128,10 +147,10 @@ namespace wheel {
 					new_session->register_close_observer(std::bind(&http_server::on_close, this, std::placeholders::_1, std::placeholders::_2));
 					new_session->register_connect_observer(std::bind(&http_server::on_connect, this, std::placeholders::_1));
 					new_session->activate();
-					start_accpect();
+					make_session();
 					});
 			}
-		private:
+
 			void init_conn_callback() {
 				http_handler_ = [this](request& req, response& res) {
 					res.set_headers(req.get_headers());

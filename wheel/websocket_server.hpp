@@ -62,12 +62,12 @@ namespace wheel {
 
 				boost::system::error_code ec;
 				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_);
-				boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
+				
 				//一定要调用open否则会监听失败
-				accept_->open(endpoint.protocol());
+				accept_->open(boost::asio::ip::tcp::v4());
 				//端口复用
 				accept_->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
-				accept_->bind(endpoint, ec);
+				accept_->bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port), ec);
 				accept_->listen(boost::asio::socket_base::max_connections, ec);
 				if (ec) {
 					std::cout << "服务器监听失败:" << ec.message() << std::endl;

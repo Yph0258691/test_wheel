@@ -60,7 +60,7 @@ namespace wheel {
 			}
 
 			~http_tcp_handle() {
-				close();
+
 			}
 
 			void activate() {
@@ -198,7 +198,7 @@ namespace wheel {
 					if (ec) {
 						release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(ec.value())));
-						std::cout << ec.message() << std::endl;
+						//std::cout << ec.message() << std::endl;
 
 						has_shake_ = false;
 						return;
@@ -214,10 +214,13 @@ namespace wheel {
 
 				boost::system::error_code ignored_ec;
 #ifdef WHEEL_ENABLE_SSL
+				ssl_socket_->lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
+
 				if (ssl_socket_->lowest_layer().is_open()) {
 					ssl_socket_->lowest_layer().close(ignored_ec);
 				}
 #else
+				socket_->shutdown(boost::asio::ip::tcp::socket::shutdown_both, ignored_ec);
 				if (socket_->is_open()){
 					socket_->close(ignored_ec);
 				}
@@ -230,6 +233,7 @@ namespace wheel {
 					return;
 				}
 
+				close();
 				close_observer_(shared_from_this(), ec);
 			}
 

@@ -175,7 +175,7 @@ namespace wheel {
 					if (error) {
 						release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(error.value())));
-						std::cout << error.message() << std::endl;
+						//std::cout << error.message() << std::endl;
 
 						has_shake_ = false;
 						return;

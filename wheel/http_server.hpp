@@ -59,7 +59,7 @@ namespace wheel {
 					}
 				}
 				catch (...) {
-					std::cout << "expection..." << std::endl;
+					std::cout << "exception..." << std::endl;
 					return;
 				}
 

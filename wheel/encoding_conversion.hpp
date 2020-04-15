@@ -105,14 +105,14 @@ namespace wheel {
 				bytes.reserve(str.size() * 2);
 
 				for (const char16_t ch : str) {
-					bytes.push_back((uint8_t)(ch / 256));
-					bytes.push_back((uint8_t)(ch % 256));
+					bytes.push_back((uint8_t)(ch>>8));
+					bytes.push_back((uint8_t)(ch &0xFF));
 				}
 
 #if defined(_MSC_VER)
 				std::wstring_convert<std::codecvt_utf16<uint32_t>, uint32_t> convert;
 				auto tmp = convert.from_bytes(bytes);
-				return std::u32string(tmp.data(), tmp.data() + tmp.size());
+				return std::move(std::u32string(tmp.data(), tmp.data() + tmp.size()));
 #else
 				std::wstring_convert<std::codecvt_utf16<char32_t>, char32_t> convert;
 				return convert.from_bytes(bytes);
@@ -141,12 +141,13 @@ namespace wheel {
 #endif
 
 				std::u16string result;
-				result.reserve(bytes.size() / 2);
+				result.reserve(bytes.size()>>1);
 
-				for (size_t i = 0; i < bytes.size(); i += 2)
+				for (size_t i = 0; i < bytes.size(); i += 2) {
 					result.push_back((char16_t)((uint8_t)(bytes[i]) * 256 + (uint8_t)(bytes[i + 1])));
+				}
 
-				return result;
+				return std::move(result);
 			}
 
 			static bool is_valid_utf8(const char* string)

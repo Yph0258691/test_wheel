@@ -62,11 +62,11 @@ namespace wheel {
 			return 0;
 		}
 
-		static int utf8_to_gbk_(char* str_utf8, char* str_gbk) {
+		static size_t utf8_to_gbk_(char* str_utf8, char* str_gbk) {
 			
 			size_t str_utf8_len = strlen(str_utf8);
 			int index_utf8 = 0;
-			int index_gbk = 0;
+			size_t index_gbk = 0;
 			while (str_utf8_len > index_utf8) {
 				int unicode = 0; 
 				int lenTmp = 0;
@@ -100,7 +100,7 @@ namespace wheel {
 			return index_gbk;
 		}
 
-		static int gbk_to_utf8_(char* strgbk, char* strutf8) {
+		static size_t gbk_to_utf8_(char* strgbk, char* strutf8) {
 
 			size_t str_gbk_len = strlen(strgbk);
 			size_t index_utf8 = 0;  

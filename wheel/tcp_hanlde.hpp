@@ -382,16 +382,7 @@ namespace wheel {
 				}
 
 				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],g_packet_buffer_size), [this](const boost::system::error_code ec, size_t bytes_transferred) {
-					if (ec.value() == 0) {
-						streams steams;
-						protocol_parser_->read_stream(&recv_buffer_[0], bytes_transferred, steams);;
-						for (const std::shared_ptr<native_stream> stream : steams) {
-							recv_observer_(shared_from_this(), stream);
-						}
-
-						to_read();
-					}
-					else {
+					if (ec){
 						if (this->get_connect_status() == disconnect) {
 							return;
 						}
@@ -399,7 +390,16 @@ namespace wheel {
 						set_connect_status(disconnect);
 						close_socket();
 						close_observer_(shared_from_this(), ec);
+						return;
 					}
+
+					streams steams;
+					protocol_parser_->read_stream(&recv_buffer_[0], bytes_transferred, steams);;
+					for (const std::shared_ptr<native_stream> stream : steams) {
+						recv_observer_(shared_from_this(), stream);
+					}
+
+					to_read();
 					});
 			}
 			void async_connect(std::string ip, int port, const MessageEventObserver& recv_observer, const CloseEventObserver& close_observer) {

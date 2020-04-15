@@ -41,7 +41,7 @@ namespace wheel {
 				return &buffer_[cur_size_];
 			}
 
-			char* get_chunked_buffer(size_t cur_size_) {
+			char* get_buffer(size_t cur_size_) {
 				return &buffer_[cur_size_];
 			}
 
@@ -64,6 +64,10 @@ namespace wheel {
 
 			size_t left_size() {
 				return buffer_.size() - cur_size_;
+			}
+
+			size_t buffer_size() {
+				return buffer_.size();
 			}
 
 			size_t left_body_size() {
@@ -288,7 +292,7 @@ namespace wheel {
 					}
 				}
 #endif
-				auto body_str = client_chunked_data_;
+				auto body_str = get_part_data();
 				form_url_map_ = parse_query(body_str);
 				if (form_url_map_.empty()) {
 					return false;
@@ -483,7 +487,7 @@ namespace wheel {
 				url_len_ = 0;
 				method_len_ = 0;
 				client_chunked_data_.clear();
-				memset(&buffer_[0], 0, buffer_.size());
+				memset(&buffer_[0], 0,buffer_size());
 			}
 
 			void set_multipart_headers(const multipart_headers& headers) {

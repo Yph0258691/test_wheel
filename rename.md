@@ -9,3 +9,7 @@ cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Debu
 #使用ssl
 cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Release -DUSE_BOOSTSSLLIBARY=ON .. 
 cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Debug -DUSE_BOOSTSSLLIBARY=ON ..
+
+#cppcheck一起编译
+cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_CPPCHECK:FILEPATH=cppcheck ..
+cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..

@@ -120,6 +120,19 @@ else ()
   endif()
 endif ()
 
+#使用cppcheck静态检查
+find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
+if (CMAKE_CXX_CPPCHECK)
+set(CMAKE_CXX_CPPCHECK "cppcheck")
+    list(
+        APPEND CMAKE_CXX_CPPCHECK 
+            "--enable=warning"
+            "--inconclusive"
+            "--force" 
+            "--inline-suppr"
+    )
+endif()
+
 #是否增加zlib库
 option(USE_ZIBLIBARY "select to use zlib libary" OFF)
 if(USE_ZIBLIBARY)

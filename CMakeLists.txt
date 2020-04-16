@@ -126,7 +126,7 @@ if (CMAKE_CXX_CPPCHECK)
 set(CMAKE_CXX_CPPCHECK "cppcheck")
     list(
         APPEND CMAKE_CXX_CPPCHECK 
-            "--enable=warning"
+            "--enable=warning,style"
             "--inconclusive"
             "--force" 
             "--inline-suppr"

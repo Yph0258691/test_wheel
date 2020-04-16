@@ -427,7 +427,8 @@ namespace wheel {
 			}
 
 			void do_read_octet_stream_body() {
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
+				//加了这个buffer不会溢出
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),boost::asio::transfer_exactly(request_->left_body_len()),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							request_->set_state(data_proc_state::data_error);
@@ -547,7 +548,7 @@ namespace wheel {
 			}
 
 			void read_chunk_data(int64_t read_len) {
-				//boost::asio::async_read:此函数会内核有多少数据每一次读完为止，有肯能会超指定buffer长度,会超出内存越界
+				//boost::asio::async_read:注意参数填写,会超出内存越界
 				socket().async_read_some(boost::asio::buffer(request_->buffer(), read_len),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
@@ -620,7 +621,8 @@ namespace wheel {
 			}
 
 			void do_read_form_urlencoded() {
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
+				//加了这个buffer不会溢出
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),boost::asio::transfer_exactly(request_->left_body_len()),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							response_back(status_type::bad_request, "read form_urlencoded data error");
@@ -703,7 +705,8 @@ namespace wheel {
 
 			void do_read_multipart() {
 				request_->fit_size();
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
+				//boost::asio::transfer_exactly,加了这个buffer不会溢出
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),boost::asio::transfer_exactly(request_->left_body_len()),
 					[this](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
                             request_->set_state(data_proc_state::data_error);
@@ -730,7 +733,7 @@ namespace wheel {
 			}
 
 			void do_read_part_data() {
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_size()),
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_size()),boost::asio::transfer_exactly(request_->left_body_size()),
 					[this](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
 							response_back(status_type::bad_request, "read multipart data error");
@@ -775,7 +778,8 @@ namespace wheel {
 			}
 
 			void do_read_body() {
-				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),
+				//加了boost::asio::transfer_exactly 不会发生buffer数组越界
+				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),boost::asio::transfer_exactly(request_->left_body_len()),
 					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							response_back(status_type::bad_request, "body read failure");

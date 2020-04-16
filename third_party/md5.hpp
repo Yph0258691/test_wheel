@@ -224,14 +224,14 @@ protected:
 		ctx->hi = 0;
 	}
 
-	static void MD5_Update(MD5_CTX* ctx, const void* data, unsigned long size) {
+	static void MD5_Update(MD5_CTX* ctx, const void* data, std::size_t size) {
 		MD5_u32 saved_lo;
 		unsigned long used, free;
 
 		saved_lo = ctx->lo;
 		if ((ctx->lo = (saved_lo + size) & 0x1fffffff) < saved_lo)
 			ctx->hi++;
-		ctx->hi += size >> 29;
+		ctx->hi += static_cast<MD5_u32>(size >> 29);
 		used = saved_lo & 0x3f;
 
 		if (used) {

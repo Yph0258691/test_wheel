@@ -15,10 +15,6 @@ namespace wheel {
 
 			}
 
-			std::string compose_send_ws_header(std::string url, std::string host) {
-
-			}
-
 			std::string handle_shark_respond(std::string server_key) {
 				std::string msg = comm_header_[0];
 				msg += comm_header_[1];

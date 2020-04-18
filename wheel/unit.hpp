@@ -595,16 +595,26 @@ namespace wheel {
 			return stream.str();
 		}
 
-		static size_t stringHex_to_int(const char*hex_str, char* offset = nullptr)
+		static int32_t stringHex_to_int(const char*hex_str)
 		{
-			size_t len = strlen(hex_str);
-			if (len > 2){
-				if (hex_str[0] == '0' && hex_str[1] == 'x')
-				{
-					return strtol(hex_str, &offset, 0);
-				}
+			int32_t value = -1;
+			if (hex_str != nullptr){
+				std::istringstream istr(hex_str);
+				istr >> std::hex >> value;
 			}
-			return strtol(hex_str, &offset, 16);
+
+			return std::move(value);
+		}
+
+		static int32_t stringDec_to_int(const char* hex_str)
+		{
+			int32_t value = -1;
+			if (hex_str != nullptr) {
+				std::istringstream istr(hex_str);
+				istr >> value;
+			}
+
+			return std::move(value);
 		}
 
 		static std::string find_substr(const std::string& str, const std::string key, const std::string& diml) {

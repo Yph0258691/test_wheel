@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include "http_tcp_handle.hpp"
 #include "http_router.hpp"
+#include "io_service_poll.hpp"
 
 namespace wheel {
 	namespace http_servers {
@@ -14,18 +15,16 @@ namespace wheel {
 		public:
 			http_server() {
 				init_conn_callback();
-				ios_ = std::make_shared<boost::asio::io_service>();
+				io_service_poll_ = std::make_unique<wheel::io_service_poll>();
+				strand_ = std::make_unique<boost::asio::io_service::strand>(*io_service_poll_->get_io_service());
 			}
 
 			~http_server() {
-				join_all();
-
 				connects_.clear();
-				ios_threads_.clear();
 			}
 
-			void listen(int port) {
-				if (ios_ == nullptr){
+			void listen(int port,int connects=1) {
+				if (io_service_poll_ == nullptr) {
 					return;
 				}
 
@@ -36,7 +35,7 @@ namespace wheel {
 
 				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 				boost::system::error_code ec;
-				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_);
+				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll_->get_io_service());
 
 				//一定要调用open否则会监听失败
 				accept_->open(boost::asio::ip::tcp::v4());
@@ -48,7 +47,9 @@ namespace wheel {
 					return;
 				}
 
-				make_session();
+				for (int i = 0; i < connects; ++i) {
+					make_session();
+				}
 			}
 
 			//set http handlers
@@ -57,31 +58,12 @@ namespace wheel {
 				http_router_.register_handler<Is...>(name, std::forward<Function>(f), std::forward<AP>(ap)...);
 			}
 
-			void run() {
-				if (ios_ ==nullptr){
+			void run(size_t thread_num = std::thread::hardware_concurrency()) {
+				if (io_service_poll_ == nullptr) {
 					return;
 				}
 
-				std::size_t num_threads = std::thread::hardware_concurrency();
-				//子线程减一个啊 
-				try
-				{
-					for (size_t c = 0; c < num_threads - 1; c++) {
-						ios_threads_.emplace_back(std::make_shared<std::thread>([this]() {
-							boost::system::error_code ec;
-							ios_->run(ec);
-							std::cout << ec.message() << std::endl;
-							}));
-					}
-				}
-				catch (...) {
-					std::cout << "exception..." << std::endl;
-					return;
-				}
-
-				boost::system::error_code ec;
-				ios_->run(ec);
-				std::cout << ec.message() << std::endl;
+				io_service_poll_->run(thread_num);
 			}
 
 			//应答的时候是否需要加上时间
@@ -106,17 +88,6 @@ namespace wheel {
 
 				return ec == boost::asio::error::address_in_use;
 			}
-
-
-			void join_all() {
-				//加入之后需要等待,避免线程不回收
-				for (auto& t : ios_threads_) {
-					if (!t->joinable()) {
-						t->join();
-					}
-				}
-			}
-
 		private:
 			void make_session() {
 				if (accept_ == nullptr) {
@@ -126,7 +97,7 @@ namespace wheel {
 				std::shared_ptr<http_tcp_handle > new_session = nullptr;
 				try
 				{
-					new_session = std::make_shared<http_tcp_handle>(ios_, http_handler_, upload_dir_, ssl_conf_, need_response_time_);
+					new_session = std::make_shared<http_tcp_handle>(io_service_poll_->get_io_service(), http_handler_, upload_dir_, ssl_conf_, need_response_time_);
 				}
 				catch (const std::exception & ex)
 				{
@@ -139,7 +110,7 @@ namespace wheel {
 				}
 
 				//发一次数据接收一次
-				accept_->async_accept(new_session->get_socket(), [this, new_session](const boost::system::error_code& ec) {
+				accept_->async_accept(new_session->get_socket(), strand_->wrap([this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -148,7 +119,7 @@ namespace wheel {
 					new_session->register_connect_observer(std::bind(&http_server::on_connect, this, std::placeholders::_1));
 					new_session->activate();
 					make_session();
-					});
+					}));
 			}
 
 			void init_conn_callback() {
@@ -198,16 +169,17 @@ namespace wheel {
 			}
 
 		private:
+			bool need_response_time_ = false;
 			ssl_configure ssl_conf_;
 			std::string upload_dir_ = fs::absolute("www").string(); //default
+			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			http_handler http_handler_;
 			http_router http_router_;
-			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			std::unordered_map<std::shared_ptr<wheel::http_servers::http_tcp_handle>, std::time_t>connects_;
 			std::unique_ptr<boost::asio::ip::tcp::acceptor> accept_{};
-			std::shared_ptr<boost::asio::io_service>ios_{};
 			std::vector<std::shared_ptr<std::thread>> ios_threads_;
-			bool need_response_time_ = false;
+			std::unique_ptr<wheel::io_service_poll>io_service_poll_;
+			std::unique_ptr<boost::asio::io_service::strand>strand_;
 		};
 	}
 }

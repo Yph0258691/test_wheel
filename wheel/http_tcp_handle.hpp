@@ -41,6 +41,7 @@ namespace wheel {
 #endif
 				request_ = std::make_unique<request>();
 				response_ = std::make_unique<response>();
+				strand_ = std::make_unique<boost::asio::io_service::strand>(*ios_);
 
 #ifdef WHEEL_ENABLE_SSL
 				is_ssl_ = true;
@@ -170,8 +171,8 @@ namespace wheel {
 					return;
 				}
 
-				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server,
-					[this](const boost::system::error_code& error) {
+				ssl_socket_->async_handshake(boost::asio::ssl::stream_base::server, 
+					strand_->wrap([this](const boost::system::error_code& error) {
 					if (error) {
 						release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(error.value())));
@@ -183,7 +184,7 @@ namespace wheel {
 
 					has_shake_ = true;
 					async_read_some();
-				});
+				}));
 #endif
 			}
 
@@ -194,7 +195,8 @@ namespace wheel {
 					return;
 				}
 
-				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->buffer_size()), [this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->buffer_size()),
+					strand_->wrap([this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					if (ec) {
 						release_session(boost::asio::error::make_error_code(
 							static_cast<boost::asio::error::basic_errors>(ec.value())));
@@ -205,7 +207,7 @@ namespace wheel {
 					}
 
 					handle_read(bytes_transferred);
-					});
+					}));
 			}
 			void close() {
 				if (!check_argument()) {
@@ -243,7 +245,7 @@ namespace wheel {
 				}
 
 				socket().async_read_some(boost::asio::buffer(request_->buffer(), request_->left_size()),
-					[this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+					strand_->wrap([this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 						if (ec){
 							release_session(boost::asio::error::make_error_code(
 								static_cast<boost::asio::error::basic_errors>(ec.value())));
@@ -251,7 +253,7 @@ namespace wheel {
 						}
 
 						handle_read(bytes_transferred);
-				});
+				}));
 			}
 
 			void handle_read(std::size_t bytes_transferred) {
@@ -342,7 +344,7 @@ namespace wheel {
 
 				response_->set_delay(false);
 				boost::asio::async_write(socket(), boost::asio::buffer(rep_str.data(), rep_str.size()),
-					[head_not_complete, body_not_complete, left_body_len, this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+					strand_->wrap([head_not_complete, body_not_complete, left_body_len, this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 					if (head_not_complete) {
 						do_read_head();
 						return;
@@ -355,7 +357,7 @@ namespace wheel {
 					}
 
 					handle_write(ec);
-				});
+				}));
 			}
 
 			void handle_request_on_respone(std::size_t bytes_transferred) {
@@ -429,7 +431,7 @@ namespace wheel {
 			void do_read_octet_stream_body() {
 				//加了这个buffer不会溢出
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),boost::asio::transfer_exactly(request_->left_body_len()),
-					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
+					strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							request_->set_state(data_proc_state::data_error);
 							response_back(status_type::bad_request, "read octet_stream data error");
@@ -449,7 +451,7 @@ namespace wheel {
 						else {
 							do_read_octet_stream_body();
 						}
-					});
+					}));
 			}
 
 			//无body应答
@@ -550,7 +552,7 @@ namespace wheel {
 			void read_chunk_data(int64_t read_len) {
 				//boost::asio::async_read:注意参数填写,会超出内存越界
 				socket().async_read_some(boost::asio::buffer(request_->buffer(), read_len),
-					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
+					strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
 						response_back(status_type::bad_request, "read chunked data failure");
 						return;
@@ -581,12 +583,12 @@ namespace wheel {
 					}
 
 					read_imcomplete_chunk_data(request_->buffer_size());
-				});
+				}));
 			}
 
 			void read_imcomplete_chunk_data(size_t read_len) {
 				socket().async_read_some(boost::asio::buffer(request_->get_buffer(0), read_len),
-					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
+					strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							response_back(status_type::bad_request, "read chunked data failure");
 							return;
@@ -617,13 +619,13 @@ namespace wheel {
 						}
 
 						read_imcomplete_chunk_data(request_->buffer_size());
-					});
+					}));
 			}
 
 			void do_read_form_urlencoded() {
 				//加了这个buffer不会溢出
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),boost::asio::transfer_exactly(request_->left_body_len()),
-					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
+					strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							response_back(status_type::bad_request, "read form_urlencoded data error");
 							return;
@@ -638,7 +640,7 @@ namespace wheel {
 						else {
 							do_read_form_urlencoded();
 						}
-					});
+					}));
 			}
 
 			void handle_url_urlencoded_body() {
@@ -707,7 +709,7 @@ namespace wheel {
 				request_->fit_size();
 				//boost::asio::transfer_exactly,加了这个buffer不会溢出
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),boost::asio::transfer_exactly(request_->left_body_len()),
-					[this](boost::system::error_code ec, std::size_t length) {
+					strand_->wrap([this](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
                             request_->set_state(data_proc_state::data_error);
 							response_back(status_type::bad_request, "read multipart data error");
@@ -729,12 +731,12 @@ namespace wheel {
 
 						request_->set_current_size(0);
 						do_read_part_data();
-					});
+					}));
 			}
 
 			void do_read_part_data() {
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_size()),boost::asio::transfer_exactly(request_->left_body_size()),
-					[this](boost::system::error_code ec, std::size_t length) {
+					strand_->wrap([this](boost::system::error_code ec, std::size_t length) {
 						if (ec) {
 							response_back(status_type::bad_request, "read multipart data error");
 							return;
@@ -754,7 +756,7 @@ namespace wheel {
 							call_back();
 							do_write();
 						}
-					});
+					}));
 			}
 
 			bool parse_multipart(size_t size, std::size_t length) {
@@ -780,7 +782,7 @@ namespace wheel {
 			void do_read_body() {
 				//加了boost::asio::transfer_exactly 不会发生buffer数组越界
 				boost::asio::async_read(socket(), boost::asio::buffer(request_->buffer(), request_->left_body_len()),boost::asio::transfer_exactly(request_->left_body_len()),
-					[this](const boost::system::error_code& ec, size_t bytes_transferred) {
+					strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 						if (ec) {
 							response_back(status_type::bad_request, "body read failure");
 							return;
@@ -795,7 +797,7 @@ namespace wheel {
 						else {
 							do_read_body();
 						}
-					});
+					}));
 			}
 
 			void init() {
@@ -846,9 +848,9 @@ namespace wheel {
 				}
 
 				boost::asio::async_write(socket(), boost::asio::buffer(rep_str.data(), rep_str.size()),
-					[this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
+					strand_->wrap([this](const boost::system::error_code& ec, std::size_t bytes_transferred) {
 						handle_write(ec);
-				});
+				}));
 			}
 
 			void handle_write(const boost::system::error_code& ec) {
@@ -1099,6 +1101,7 @@ namespace wheel {
 #else
 			std::shared_ptr<boost::asio::ip::tcp::socket> socket_{};
 #endif
+			std::unique_ptr<boost::asio::io_service::strand>strand_;
 		};
 	}
 }

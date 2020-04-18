@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include "http_tcp_handle.hpp"
 #include "http_router.hpp"
-#include "io_service_poll.hpp"
 
 namespace wheel {
 	namespace http_servers {
@@ -15,8 +14,7 @@ namespace wheel {
 		public:
 			http_server(){
 				init_conn_callback();
-				io_service_poll_ = std::make_unique<wheel::io_service_poll>();
-				strand_ = std::make_unique<boost::asio::io_service::strand>(*io_service_poll_->get_io_service());
+				strand_ = std::make_unique<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
 			}
 
 			~http_server() {
@@ -24,10 +22,6 @@ namespace wheel {
 			}
 
 			void listen(int port,int connects=1) {
-				if (io_service_poll_ == nullptr){
-					return;
-				}
-
 				if (port_in_use(port)){
 					std::cout << "port reuse" << std::endl;
 					return;
@@ -35,7 +29,7 @@ namespace wheel {
 
 				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*ios_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 				boost::system::error_code ec;
-				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll_->get_io_service());
+				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
 
 				//一定要调用open否则会监听失败
 				accept_->open(boost::asio::ip::tcp::v4());
@@ -59,11 +53,7 @@ namespace wheel {
 			}
 
 			void run(size_t thread_num = std::thread::hardware_concurrency()) {
-				if (io_service_poll_ ==nullptr){
-					return;
-				}
-			
-				io_service_poll_->run(thread_num);
+				io_service_poll::get_instance().run(thread_num);
 			}
 
 			//应答的时候是否需要加上时间
@@ -97,7 +87,7 @@ namespace wheel {
 				std::shared_ptr<http_tcp_handle > new_session = nullptr;
 				try
 				{
-					new_session = std::make_shared<http_tcp_handle>(io_service_poll_->get_io_service(), http_handler_, upload_dir_, ssl_conf_, need_response_time_);
+					new_session = std::make_shared<http_tcp_handle>(strand_,http_handler_, upload_dir_, ssl_conf_, need_response_time_);
 				}
 				catch (const std::exception & ex)
 				{
@@ -176,8 +166,7 @@ namespace wheel {
 			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			std::unordered_map<std::shared_ptr<wheel::http_servers::http_tcp_handle>, std::time_t>connects_;
 			std::unique_ptr<boost::asio::ip::tcp::acceptor> accept_{};
-			std::unique_ptr<wheel::io_service_poll>io_service_poll_;
-			std::unique_ptr<boost::asio::io_service::strand>strand_;
+			std::shared_ptr<boost::asio::io_service::strand>strand_;
 		};
 	}
 }

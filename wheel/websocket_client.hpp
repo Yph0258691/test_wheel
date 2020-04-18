@@ -13,9 +13,9 @@ namespace wheel {
 			webscoket_client(const MessageEventObserver& recv_observer)
 				:recv_observer_(recv_observer) {
 				try{
-					ios_ = std::make_shared<boost::asio::io_service>();
-					tcp_handler_ = std::make_shared<ws_tcp_handle>(ios_);
-					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
+					tcp_handler_ = std::make_shared<ws_tcp_handle>(strand_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service()));
 				}catch (const std::exception&ex){
 					std::cout << ex.what() << std::endl;
 				}
@@ -29,9 +29,9 @@ namespace wheel {
 				, packet_cmd_offset_(packet_cmd_offse) {
 				try
 				{
-					ios_ = std::make_shared<boost::asio::io_service>();
-					tcp_handler_ = std::make_shared<wheel::websocket::ws_tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
-					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
+					tcp_handler_ = std::make_shared<wheel::websocket::ws_tcp_handle>(strand_, header_size_, packet_size_offset_, packet_cmd_offset_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}catch (const std::exception&ex){
 					std::cout << ex.what() << std::endl;
 				}
@@ -70,8 +70,8 @@ namespace wheel {
 				return tcp_handler_->to_send(data, count);
 			}
 
-			void run() {
-				ios_->run();
+			void run(size_t thread_num = std::thread::hardware_concurrency()) {
+				io_service_poll::get_instance().run(thread_num);
 			}
 		private:
 			//向ws服务器进行握手
@@ -134,10 +134,7 @@ namespace wheel {
 		private:
 			bool reconnent_;
 			int parser_type_ = json;
-			MessageEventObserver recv_observer_;
-			std::shared_ptr<boost::asio::io_service>ios_{};
-			std::shared_ptr<ws_tcp_handle> tcp_handler_{};
-			std::unique_ptr<boost::asio::steady_timer> timer_{};
+			int server_port_;
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
 			std::size_t packet_cmd_offset_ = 0;
@@ -148,7 +145,11 @@ namespace wheel {
 				"Upgrade: websocket\r\n"
 				};
 			std::string server_ip_;
-			int server_port_;
+			MessageEventObserver recv_observer_;
+			std::shared_ptr<boost::asio::io_service::strand>strand_;
+			std::shared_ptr<ws_tcp_handle> tcp_handler_{};
+			std::unique_ptr<boost::asio::steady_timer> timer_{};
+
 		};
 	}
 }

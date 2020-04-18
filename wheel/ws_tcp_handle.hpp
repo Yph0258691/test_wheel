@@ -2,10 +2,11 @@
 #define ws_tcp_handle_h__
 
 
+#include <atomic>
+#include <iostream>
 #include<memory>
 #include <list>
 #include <functional>
-#include <boost/asio.hpp>
 #include "native_stream.hpp"
 #include "send_buffer.hpp"
 #include "bin_parser.hpp"
@@ -13,8 +14,7 @@
 #include "websocket_handle.hpp"
 #include "picohttpparser.hpp"
 #include "timer.hpp"
-#include <atomic>
-#include <iostream>
+#include "io_service_poll.hpp"
 
 namespace wheel {
 	namespace websocket {
@@ -39,9 +39,9 @@ namespace wheel {
 		{
 		public:
 			// bin解析
-			ws_tcp_handle(const std::shared_ptr<boost::asio::io_service>&ptr, std::size_t header_size,
+			ws_tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>& strand, std::size_t header_size,
 				std::size_t packet_size_offset, std::size_t packet_cmd_offset)
-				:ios_(ptr)
+				:strand_(strand)
 				, connect_status_(-1)
 				, header_size_(header_size)
 				, packet_size_offset_(packet_size_offset)
@@ -49,8 +49,8 @@ namespace wheel {
 			{
 				try
 				{
-					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*ios_);
-					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
+					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}catch (const std::exception&ex){
 					std::cout << ex.what() << std::endl;
 					socket_ = nullptr;
@@ -69,14 +69,14 @@ namespace wheel {
 			}
 
 			//json 解析
-			ws_tcp_handle(const std::shared_ptr<boost::asio::io_service>&ptr)
-				:ios_(ptr)
+			ws_tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>& strand)
+				:strand_(strand)
 				, connect_status_(-1)
 			{
 				try
 				{
-					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*ios_);
-					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
+					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}
 				catch (const std::exception&ex){
 					std::cout << ex.what() << std::endl;
@@ -196,8 +196,8 @@ namespace wheel {
 				if (write_count_ == 0) {
 					++write_count_; //1:等于0就相加，2:若此变量为1，说明有错误 
 
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), std::bind(&ws_tcp_handle::on_write, this,
-						std::placeholders::_1, std::placeholders::_2));
+					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),strand_->wrap(std::bind(&ws_tcp_handle::on_write, this,
+						std::placeholders::_1, std::placeholders::_2)));
 				}
 
 				return 0;
@@ -235,7 +235,7 @@ namespace wheel {
 				}
 
 				timer_->expires_from_now(std::chrono::seconds(seconds_));
-				timer_->async_wait([this, ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
+				timer_->async_wait(strand_->wrap([this, ip, port, recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -246,7 +246,7 @@ namespace wheel {
 
 					async_connect(ip, port, recv_observer, close_observer);
 					reconect_server(ip, port, recv_observer, close_observer);
-					});
+					}));
 			}
 
 			void register_connect_observer(ConnectEventObserver observer) {
@@ -398,7 +398,7 @@ namespace wheel {
 
 				recv_buffer_size_ = g_packet_buffer_size;
 				recv_buffer_ = std::make_unique<char[]>(g_packet_buffer_size);
-				socket_->async_receive(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_), [this](const boost::system::error_code& ec, size_t bytes_transferred) {
+				socket_->async_receive(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_),strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
 						set_connect_status(disconnect);
 						close_socket();
@@ -415,7 +415,7 @@ namespace wheel {
 					}
 
 					to_read_websocket_data();
-					});
+					}));
 			}
 
 			void to_read() {
@@ -424,7 +424,7 @@ namespace wheel {
 				}
 
 				recv_buffer_ = std::make_unique<char[]>(recv_buffer_size_);
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],recv_buffer_size_), [this](const boost::system::error_code ec, size_t bytes_transferred) {
+				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],recv_buffer_size_),strand_->wrap([this](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec.value() == 0) {
 						bool is_http = false;
 
@@ -456,7 +456,7 @@ namespace wheel {
 
 						close_observer_(shared_from_this(), ec);
 					}
-					});
+					}));
 			}
 
 			//读取websocket服务端数据
@@ -466,7 +466,7 @@ namespace wheel {
 				}
 
 				recv_buffer_ = std::make_unique<char[]>(g_packet_buffer_size);
-				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0], g_packet_buffer_size), [this, send_handleshake_key](const boost::system::error_code ec, size_t bytes_transferred) {
+				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0], g_packet_buffer_size),strand_->wrap([this, send_handleshake_key](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec.value() == 0) {
 						//handleshake check
 						std::shared_ptr<websocket_handle> web_socket_hand = std::make_shared<websocket_handle>();
@@ -489,14 +489,14 @@ namespace wheel {
 
 						close_observer_(shared_from_this(), ec);
 					}
-					});
+					}));
 			}
 			void async_connect(std::string ip, int port, const MessageEventObserver& recv_observer, const CloseEventObserver& close_observer) {
 				if (socket_ == nullptr) {
 					return;
 				}
 
-				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port), [this, recv_observer, close_observer](const boost::system::error_code& ec) {
+				socket_->async_connect(TCP::endpoint(ADDRESS::from_string(ip), port),strand_->wrap([this, recv_observer, close_observer](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -505,7 +505,7 @@ namespace wheel {
 					register_close_observer(close_observer);
 					register_recv_observer(recv_observer);
 					to_read();
-					});
+					}));
 			}
 			void on_write(const boost::system::error_code& ec, std::size_t bytes_transferred) {
 				--write_count_;
@@ -530,8 +530,8 @@ namespace wheel {
 				}
 
 				if (!send_buffers_.empty()) {
-					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()), std::bind(&ws_tcp_handle::on_write, this,
-						std::placeholders::_1, std::placeholders::_2));
+					socket_->async_send(boost::asio::buffer(send_buffers_.front()->data(), send_buffers_.front()->size()),strand_->wrap(std::bind(&ws_tcp_handle::on_write, this,
+						std::placeholders::_1, std::placeholders::_2)));
 					++write_count_;
 				}
 
@@ -697,27 +697,26 @@ namespace wheel {
 				return nullptr;
 			}
 		private:
-			std::unique_ptr<boost::asio::steady_timer> timer_{};
-			std::unique_ptr<wheel::unit::timer>ws_timer_heart_ = nullptr;
+			std::atomic_flag data_lock_ = ATOMIC_FLAG_INIT;
+			HEADER_MAP http_head_infos_;
 			int connect_status_ = disconnect;
+			int seconds_ = g_client_reconnect_seconds; //客户端设置重连
+			int ws_heart_seconds_ = g_ws_heart_seconds;
+			std::int32_t write_count_ = 0;
 			std::size_t header_size_;
 			std::size_t packet_size_offset_;
 			std::size_t packet_cmd_offset_;
-			std::shared_ptr<boost::asio::io_service> ios_{};
+			std::size_t recv_buffer_size_ = 1024;
 			std::shared_ptr<TCP::socket> socket_{};
-			std::list<std::shared_ptr<wheel::send_buffer>> send_buffers_;
-			std::shared_ptr<IProtocol_parser>protocol_parser_ = nullptr;
-			std::int32_t write_count_ = 0;
 			ConnectEventObserver		connect_observer_;
 			MessageEventObserver		recv_observer_;
 			CloseEventObserver			close_observer_;
-			//char recv_buffer_[g_packet_buffer_size] = { 0 };
 			std::unique_ptr<char[]> recv_buffer_;
-			int seconds_ = g_client_reconnect_seconds; //客户端设置重连
-			int ws_heart_seconds_ = g_ws_heart_seconds;
-			HEADER_MAP http_head_infos_;
-			std::size_t recv_buffer_size_ =1024;
-			std::atomic_flag data_lock_ = ATOMIC_FLAG_INIT;
+			std::shared_ptr<boost::asio::io_service::strand>strand_;
+			std::unique_ptr<boost::asio::steady_timer> timer_{};
+			std::unique_ptr<wheel::unit::timer>ws_timer_heart_ = nullptr;
+			std::shared_ptr<IProtocol_parser>protocol_parser_ = nullptr;
+			std::list<std::shared_ptr<wheel::send_buffer>> send_buffers_;
 		};
 	}
 }

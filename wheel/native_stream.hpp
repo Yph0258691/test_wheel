@@ -2,6 +2,8 @@
 #define native_stream_h__
 
 #include <vector>
+#include <cstring>
+
 namespace wheel {
 	class native_stream
 	{

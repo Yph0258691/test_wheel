@@ -19,12 +19,12 @@ namespace wheel {
 				:recv_observer_(recv_observer) {
 				try
 				{
-					io_service_ = std::make_shared<boost::asio::io_service>();
+					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
 				}
 				catch (const std::exception&ex)
 				{
 					std::cout << ex.what() << std::endl;
-					io_service_ = nullptr;
+					strand_ = nullptr;
 				}
 			}
 
@@ -37,31 +37,28 @@ namespace wheel {
 				, packet_cmd_offset_(packet_cmd_offset) {
 				try
 				{
-					io_service_ = std::make_shared<boost::asio::io_service>();
+					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
 				}
 				catch (const std::exception & ex)
 				{
 					std::cout << ex.what() << std::endl;
-					io_service_ = nullptr;
+					strand_ = nullptr;
 				}
 			}
 
 			~websocket_server() {
-				join_all();
-
-				ios_threads_.clear();
 			}
 
 			void init(int port, int connect_pool=1) {
-				//accept的ios要和socket同一地址，否则会出问题
-				if (io_service_ =nullptr){
+				if (port_in_use(port)) {
+					std::cout << "port reuse" << std::endl;
 					return;
 				}
 
 				//accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
 
 				boost::system::error_code ec;
-				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_);
+				accept_ = std::make_unique<boost::asio::ip::tcp::acceptor>(*io_service_poll::get_instance().get_io_service());
 				
 				//一定要调用open否则会监听失败
 				accept_->open(boost::asio::ip::tcp::v4());
@@ -79,34 +76,25 @@ namespace wheel {
 				}
 			}
 
-			void run() {
-				if (io_service_ ==nullptr){
-					return;
-				}
-
-				std::size_t num_threads = std::thread::hardware_concurrency();
-				//子线程减一个啊 
-				try{
-					for (size_t c = 0;c < num_threads - 1; c++) {
-						ios_threads_.emplace_back(std::make_shared<std::thread>([this]() {
-							boost::system::error_code ec;
-							io_service_->run(ec);
-							std::cout << ec.message() << std::endl;
-							}));
-					}
-
-				}catch (const std::exception&ex){
-					std::cout << ex.what() << std::endl;
-					return;
-				}
-
-				boost::system::error_code ec;
-				io_service_->run(ec);
-				std::cout << ec.message() << std::endl;
+			void run(size_t thread_num = std::thread::hardware_concurrency()) {
+				io_service_poll::get_instance().run(thread_num);
 			}
 		private:
+			bool port_in_use(unsigned short port) {
+				boost::asio::io_service svc;
+				boost::asio::ip::tcp::acceptor acept(svc);
+
+				boost::system::error_code ec;
+				acept.open(boost::asio::ip::tcp::v4(), ec);
+				acept.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true), ec);
+				acept.bind({ boost::asio::ip::tcp::v4(), port }, ec);
+
+				return ec == boost::asio::error::address_in_use;
+			}
+
+
 			void make_session() {
-				if (accept_ == nullptr ||io_service_ ==nullptr) {
+				if (accept_ == nullptr || strand_ == nullptr) {
 					return;
 				}
 
@@ -114,10 +102,10 @@ namespace wheel {
 				try
 				{
 					if (parser_type_ == json) {
-						new_session = std::make_shared<ws_tcp_handle>(io_service_, header_size_, packet_size_offset_, packet_cmd_offset_);
+						new_session = std::make_shared<ws_tcp_handle>(strand_, header_size_, packet_size_offset_, packet_cmd_offset_);
 					}
 					else if (parser_type_ == bin) {
-						new_session = std::make_shared<ws_tcp_handle>(io_service_);
+						new_session = std::make_shared<ws_tcp_handle>(strand_);
 					}
 					else {
 						return;
@@ -186,16 +174,16 @@ namespace wheel {
 				lock_.clear(std::memory_order_release);
 			}
 		private:
-			std::unordered_map<std::shared_ptr<ws_tcp_handle>,std::time_t>connects_;
-			std::unique_ptr<TCP::acceptor>accept_{};
-			std::shared_ptr<boost::asio::io_service> io_service_{};
-			MessageEventObserver		recv_observer_;
 			int parser_type_ = json;
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
 			std::size_t packet_cmd_offset_ = 0;
 			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
+			MessageEventObserver		recv_observer_;
+			std::unique_ptr<TCP::acceptor>accept_{};
 			std::vector<std::shared_ptr<std::thread>> ios_threads_;
+			std::shared_ptr<boost::asio::io_service::strand>strand_;
+			std::unordered_map<std::shared_ptr<ws_tcp_handle>, std::time_t>connects_;
 		};
   }
 }

@@ -13,6 +13,7 @@
 #include "http_request.hpp"
 #include "http_multipart_reader.hpp"
 #include "uuid.h"
+#include "io_service_poll.hpp"
 
 
 namespace wheel {
@@ -33,15 +34,14 @@ namespace wheel {
 
 		public:
 			http_tcp_handle() = delete;
-			http_tcp_handle(const std::shared_ptr<boost::asio::io_service> ios, http_handler& handle,
+			http_tcp_handle(const std::shared_ptr<boost::asio::io_service::strand>&strand,http_handler& handle,
 				const std::string& static_dir, const ssl_configure& ssl_conf, const bool need_response_time) :http_handler_(handle)
-				, ios_(ios), static_dir_(static_dir), need_response_time_(need_response_time) {
+				,static_dir_(static_dir), need_response_time_(need_response_time), strand_(strand){
 #ifndef WHEEL_ENABLE_SSL 
-				socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*ios_);
+				socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
 #endif
 				request_ = std::make_unique<request>();
 				response_ = std::make_unique<response>();
-				strand_ = std::make_unique<boost::asio::io_service::strand>(*ios_);
 
 #ifdef WHEEL_ENABLE_SSL
 				is_ssl_ = true;
@@ -136,7 +136,7 @@ namespace wheel {
 						ssl_context.use_tmp_dh_file(std::move(ssl_conf.pem_flie));
 					}
 
-					ssl_socket_ = std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(*ios_, ssl_context);
+					ssl_socket_ = std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(*io_service_poll::get_instance().get_io_service(), ssl_context);
 				}
 				catch (const std::exception & e) {
 					std::cout << e.what() << std::endl;
@@ -1170,7 +1170,6 @@ namespace wheel {
 			multipart_reader multipart_parser_;
 			std::unique_ptr<request>request_{};
 			std::unique_ptr<response>response_;
-			std::shared_ptr<boost::asio::io_service>ios_{};
 			std::function<bool(request&, response&)>* upload_check_ = nullptr;
 			std::function<void(request&, std::string&)> multipart_begin_ = nullptr;
 #ifdef WHEEL_ENABLE_SSL
@@ -1178,7 +1177,7 @@ namespace wheel {
 #else
 			std::shared_ptr<boost::asio::ip::tcp::socket> socket_{};
 #endif
-			std::unique_ptr<boost::asio::io_service::strand>strand_;
+			std::shared_ptr<boost::asio::io_service::strand>strand_;
 		};
 	}
 }

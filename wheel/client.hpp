@@ -11,17 +11,17 @@ namespace wheel {
 			client(const MessageEventObserver& recv_observer, int parser_type)
 				:recv_observer_(recv_observer) {
 				try{
-					ios_ = std::make_shared<boost::asio::io_service>();
-					tcp_handler_ = std::make_shared<tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
-					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
+					tcp_handler_ = std::make_shared<tcp_handle>(strand_, header_size_, packet_size_offset_, packet_cmd_offset_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}catch (const std::exception&ex){
-					ios_ = nullptr;
+					strand_ = nullptr;
 					tcp_handler_ = nullptr;
 					timer_ = nullptr;
 					std::cout << ex.what() << std::endl;
 				}
 
-				if (ios_ ==nullptr || tcp_handler_ ==nullptr || timer_ ==nullptr){
+				if (strand_ ==nullptr || tcp_handler_ ==nullptr || timer_ ==nullptr){
 					return;
 				}
 
@@ -37,20 +37,20 @@ namespace wheel {
 			
 				try
 				{
-					ios_ = std::make_shared<boost::asio::io_service>();
-					tcp_handler_ = std::make_shared<tcp_handle>(ios_, header_size_, packet_size_offset_, packet_cmd_offset_);
-					timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
+					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
+					tcp_handler_ = std::make_shared<tcp_handle>(strand_, header_size_, packet_size_offset_, packet_cmd_offset_);
+					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}
 				catch (const std::exception&ex)
 				{
-					ios_ = nullptr;
+					strand_ = nullptr;
 					tcp_handler_ = nullptr;
 					timer_ = nullptr;
 					std::cout << ex.what() << std::endl;
 				}
 			
 
-				if (ios_ == nullptr || tcp_handler_ == nullptr || timer_ == nullptr) {
+				if (strand_ == nullptr || tcp_handler_ == nullptr || timer_ == nullptr) {
 					return;
 				}
 
@@ -83,9 +83,11 @@ namespace wheel {
 				return tcp_handler_->to_send(data, count);
 			}
 
-			void run() {
-				ios_->run();
+
+			void run(size_t thread_num = std::thread::hardware_concurrency()) {
+				io_service_poll::get_instance().run(thread_num);
 			}
+
 		private:
 			void on_close(std::shared_ptr<wheel::tcp_socket::tcp_handle> handler, const boost::system::error_code& ec) {
 				if (ec) {
@@ -126,15 +128,15 @@ namespace wheel {
 			}
 		private:
 			bool reconnent_;
-			MessageEventObserver recv_observer_;
-			std::shared_ptr<boost::asio::io_service>ios_{};
-			std::shared_ptr<tcp_handle> tcp_handler_{};
-			std::unique_ptr<boost::asio::steady_timer> timer_{};
 			std::size_t header_size_ = 0;
 			std::size_t packet_size_offset_ = 0;
 			std::size_t packet_cmd_offset_ = 0;
 			std::string server_ip_;
 			int server_port_;
+			MessageEventObserver recv_observer_;
+			std::shared_ptr<tcp_handle> tcp_handler_{};
+			std::shared_ptr <boost::asio::io_service::strand>strand_;
+			std::unique_ptr<boost::asio::steady_timer> timer_{};
 		};
 	}
 }

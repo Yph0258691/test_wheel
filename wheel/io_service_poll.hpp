@@ -1,6 +1,7 @@
 #ifndef io_service_poll_h__
 #define io_service_poll_h__
 
+#include <iostream>
 #include <memory>
 #include <vector>
 #include <thread>
@@ -10,25 +11,27 @@
 namespace wheel {
 	class io_service_poll {
 	public:
-		io_service_poll():service_(std::make_shared<boost::asio::io_service>()) {
+		static io_service_poll& get_instance() {
+			//c++11保证唯一性
+			static io_service_poll instance;
+			return instance;
 		}
 
 		~io_service_poll() {
 			stop();
 		}
 
-
-		std::shared_ptr<boost::asio::io_service> get_io_service()const
+		const std::shared_ptr<boost::asio::io_service> get_io_service()const
 		{
 			return service_;
 		}
 
 		void run(size_t thread_num)
 		{
-			for (int i = 0; i < thread_num-1; ++i) {
-				threads_.emplace_back([this]() { 
+			for (int i = 0; i < thread_num - 1; ++i) {
+				threads_.emplace_back([this]() {
 					boost::system::error_code ec;
-						service_->run(ec);
+					service_->run(ec);
 					});
 			}
 
@@ -38,6 +41,20 @@ namespace wheel {
 
 		io_service_poll(const io_service_poll&) = delete;
 		io_service_poll& operator=(const io_service_poll&) = delete;
+		io_service_poll(const io_service_poll&&) = delete;
+		io_service_poll& operator=(const io_service_poll&&) = delete;
+	private:
+		io_service_poll() {
+			try
+			{
+				service_ = std::make_shared<boost::asio::io_service>();
+			}
+			catch (const std::exception & ex)
+			{
+				std::cout << ex.what() << std::endl;
+				exit(0);
+			}
+		}
 	private:
 		void stop()
 		{

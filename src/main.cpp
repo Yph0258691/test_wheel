@@ -251,7 +251,7 @@
 //	server.run();
 //}
 
-#define WHEEL_ENABLE_SSL
+//#define WHEEL_ENABLE_SSL
 //#define WHEEL_ENABLE_GZIP
 #include <iostream>
 #include <wheel/http_server.hpp>
@@ -263,13 +263,13 @@ wheel::http_servers::http_server server;
 //校验的切面
 struct check {
 	bool before(request& req, response& res) {
-		std::cout << "before check" << std::endl;
+		//std::cout << "before check" << std::endl;
 		return true;
 	}
 
 	bool after(request& req, response& res) {
-		const std::string str = res.response_str();
-		std::cout << str << std::endl;
+		//const std::string str = res.response_str();
+		//std::cout << str << std::endl;
 		std::cout << "after check" << std::endl;
 		return true;
 	}
@@ -324,7 +324,7 @@ int main()
 	}
 
 	//server.set_ssl_conf({ "server.crt", "server.key","1234561" });
-	server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key"});
+	//server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key"});
 	//server.enable_response_time(true);
 	server.listen(9090);
 	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
@@ -361,8 +361,23 @@ int main()
 		res.add_header("Access-Control-Allow-origin", "*");
 		//res.set_status_and_content(status_type::ok,"hello world");
 		//res.set_status_and_content(status_type::ok, "hello world",res_content_type::string);
-		std::string str4 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多");
-		res.set_status_and_content(status_type::ok, std::move(str4), res_content_type::string);
+		//std::string str4 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多");
+		//res.set_status_and_content(status_type::ok, std::move(str4), res_content_type::string);
+		/**********************chunked pass**************************************/
+		//std::string str4 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多abcdefg");
+		//res.set_urlencoded_datas("name", std::move(str4));
+		//res.set_urlencoded_datas("age", "20123454");
+		//res.set_urlencoded_status_and_content(status_type::ok, content_encoding::none, transfer_type::chunked);
+		std::string str4 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多abcdefg");
+		res.set_multipart_data("name","wshihaoren"); //一次性发出的数据
+		res.set_multipart_data("age", "123");
+		res.set_multipart_data("age1", "456");
+		res.set_multipart_data("name1",std::move(str4));
+		std::string str5 = wheel::char_encoding::encoding_conversion::gbk_to_utf8("我是好人我問三十多萬多無多無多無多多abcdefg!~*&^23455698321550/.,??><");
+		res.set_multipart_data("name2", std::move(str5));
+
+		res.set_mstatus_and_content(status_type::ok,transfer_type::chunked);
+
 		}, check{});
 
 	server.run();

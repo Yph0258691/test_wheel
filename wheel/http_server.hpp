@@ -13,7 +13,7 @@ namespace wheel {
 	namespace http_servers {
 		class http_server {
 		public:
-			http_server() {
+			http_server(){
 				init_conn_callback();
 				io_service_poll_ = std::make_unique<wheel::io_service_poll>();
 				strand_ = std::make_unique<boost::asio::io_service::strand>(*io_service_poll_->get_io_service());
@@ -24,7 +24,7 @@ namespace wheel {
 			}
 
 			void listen(int port,int connects=1) {
-				if (io_service_poll_ == nullptr) {
+				if (io_service_poll_ == nullptr){
 					return;
 				}
 
@@ -47,7 +47,7 @@ namespace wheel {
 					return;
 				}
 
-				for (int i = 0; i < connects; ++i) {
+				for (int i =0;i< connects;++i){
 					make_session();
 				}
 			}
@@ -59,10 +59,10 @@ namespace wheel {
 			}
 
 			void run(size_t thread_num = std::thread::hardware_concurrency()) {
-				if (io_service_poll_ == nullptr) {
+				if (io_service_poll_ ==nullptr){
 					return;
 				}
-
+			
 				io_service_poll_->run(thread_num);
 			}
 
@@ -110,7 +110,7 @@ namespace wheel {
 				}
 
 				//发一次数据接收一次
-				accept_->async_accept(new_session->get_socket(), strand_->wrap([this, new_session](const boost::system::error_code& ec) {
+				accept_->async_accept(new_session->get_socket(),strand_->wrap([this, new_session](const boost::system::error_code& ec) {
 					if (ec) {
 						return;
 					}
@@ -167,17 +167,15 @@ namespace wheel {
 
 				lock_.clear(std::memory_order_release);
 			}
-
 		private:
 			bool need_response_time_ = false;
 			ssl_configure ssl_conf_;
 			std::string upload_dir_ = fs::absolute("www").string(); //default
-			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			http_handler http_handler_;
 			http_router http_router_;
+			std::atomic_flag lock_ = ATOMIC_FLAG_INIT;
 			std::unordered_map<std::shared_ptr<wheel::http_servers::http_tcp_handle>, std::time_t>connects_;
 			std::unique_ptr<boost::asio::ip::tcp::acceptor> accept_{};
-			std::vector<std::shared_ptr<std::thread>> ios_threads_;
 			std::unique_ptr<wheel::io_service_poll>io_service_poll_;
 			std::unique_ptr<boost::asio::io_service::strand>strand_;
 		};

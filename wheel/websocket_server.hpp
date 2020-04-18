@@ -52,7 +52,7 @@ namespace wheel {
 				ios_threads_.clear();
 			}
 
-			void init(int port, int connect_pool) {
+			void init(int port, int connect_pool=1) {
 				//accept的ios要和socket同一地址，否则会出问题
 				if (io_service_ =nullptr){
 					return;

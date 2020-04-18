@@ -31,7 +31,6 @@ namespace wheel {
 			string,
 			multipart,
 			urlencoded,
-			chunked,
 			octet_stream,
 			unknown,
 		};
@@ -41,7 +40,13 @@ namespace wheel {
 			json,
 			string,
 			multipart,
+			urlencoded,
 			none
+		};
+
+		enum class transfer_type {
+			normal =100,
+			chunked
 		};
 
 		constexpr  auto HTML = res_content_type::html;
@@ -195,43 +200,29 @@ namespace wheel {
 		const std::string rep_json = "Content-Type: application/json; charset=UTF-8\r\n";
 		const std::string rep_string = "Content-Type: text/plain; charset=UTF-8\r\n";
 		const std::string rep_multipart = "Content-Type: multipart/form-data; boundary=";
+		const std::string rep_urlencoded = "Content-Type:application/x-www-form-urlencoded\r\n";
 
 		const std::string rep_keep = "Connection: keep-alive\r\n";
 		const std::string rep_close = "Connection: close     \r\n";
 		const std::string rep_len = "Content-Length: ";
 		const std::string rep_crcf = "\r\n";
 		const std::string rep_server = "Server: http_server\r\n";
+		const std::string rep_multipart_lable = "Content-Disposition: form-data; name=";
 
 		static const char name_value_separator[] = { ':', ' ' };
 
-		static const char crlf[] = { '\r', '\n' };
-		static const char last_chunk[] = { '0', '\r', '\n' };
+		//static const char crlf[] = { '\r', '\n' }; //渣渣程序员搞了调了一天
+		//static const char last_chunk[] = { '0', '\r', '\n' };
+		static const std::string crlf= "\r\n";
+		static const std::string last_chunk= "0\r\n";
+
 		static const std::string http_chunk_header =
 			"HTTP/1.1 200 OK\r\n"
 			"Transfer-Encoding: chunked\r\n";
-		/*"Content-Type: video/mp4\r\n"
-		"\r\n";*/
 
 		static const std::string http_range_chunk_header =
 			"HTTP/1.1 206 Partial Content\r\n"
 			"Transfer-Encoding: chunked\r\n";
-		/*"Content-Type: video/mp4\r\n"
-		"\r\n";*/
-
-		static const std::string to_content_type_str(res_content_type type) {
-			switch (type) {
-			case res_content_type::html:
-				return rep_html;
-			case res_content_type::json:
-				return rep_json;
-			case res_content_type::string:
-				return rep_string;
-			case res_content_type::multipart:
-				return rep_multipart;
-			default:
-				return "";
-			}
-		}
 
 		namespace detail {
 			template<unsigned... digits>

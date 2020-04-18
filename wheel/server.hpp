@@ -44,7 +44,7 @@ namespace wheel {
 				ios_threads_.clear();
 			}
 
-			void init(int port, int connect_pool) {
+			void init(int port, int connect_pool =1) {
 				//注意地方要同一个iossever，保证在一个线程队列中
 				if (io_service_ ==nullptr){
 					return;

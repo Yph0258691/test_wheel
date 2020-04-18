@@ -87,19 +87,8 @@ namespace wheel {
 				left_body_len_ -= size;
 			}
 
-			std::pair<phr_header*, size_t> get_headers() {
-				if (copy_headers_.empty()) {
-					return { {} , 0 };
-				}
-
-				num_headers_ = copy_headers_.size();
-				for (size_t i = 0; i < num_headers_; i++) {
-					headers_[i].name = copy_headers_[i].first.data();
-					headers_[i].name_len = copy_headers_[i].first.size();
-					headers_[i].value = copy_headers_[i].second.data();
-					headers_[i].value_len = copy_headers_[i].second.size();
-				}
-				return { headers_ , num_headers_ };
+			std::vector<std::pair<std::string, std::string>> get_headers()const {
+				return copy_headers_;
 			}
 
 			std::string get_method() const {
@@ -187,35 +176,36 @@ namespace wheel {
 				static_assert(std::is_arithmetic<T>::value);
 				auto val = get_query_value(key);
 				if (val.empty()) {
-					throw std::logic_error("empty value");
+					return std::move(std::declval<T>());
 				}
 
 				if constexpr (std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value ||
 					std::is_same<T, bool>::value || std::is_same<T, char>::value || std::is_same<T, short>::value) {
 					int r = std::atoi(val.data());
 					if (val[0] != '0' && r == 0) {
-						throw std::invalid_argument(std::string(val) + ": is not an integer");
+						return std::move(std::declval<T>());
 					}
-					return r;
+
+					return std::move(r);
 				}
 				else if constexpr (std::is_same<T, int64_t>::value || std::is_same<T, uint64_t>::value) {
 					auto r = std::atoll(val.data());
 					if (val[0] != '0' && r == 0) {
-						throw std::invalid_argument(std::string(val) + ": is not an integer");
+						return std::move(std::declval<T>());
 					}
-					return r;
+
+					return std::move(r);
 				}
 				else if constexpr (std::is_floating_point<T>::value) {
 					char* end;
 					auto f = strtof(val.data(), &end);
 					if (val.back() != *(end - 1)) {
-						throw std::invalid_argument(std::string(val) + ": is not a float");
+						return std::move(std::declval<T>());
 					}
-					return f;
+					return std::move(f);
 				}
-				else {
-					throw std::invalid_argument("not support the value type");
-				}
+
+				return std::move(std::declval<T>());
 			}
 
 			std::string get_query_value(std::string key) {
@@ -254,9 +244,8 @@ namespace wheel {
 
 				return false;
 			}
-			bool parse_form_urlencoded() {
-				form_url_map_.clear();
 
+			bool parse_form_urlencoded() {
 #ifdef WHEEL_ENABLE_GZIP
 				if (has_gzip_) {
 					bool r = uncompress();
@@ -265,18 +254,17 @@ namespace wheel {
 					}
 				}
 #endif
-				auto body_str = body();
+				const auto body_str = body();
 				form_url_map_ = parse_query(body_str);
-				if (form_url_map_.empty())
+				if (form_url_map_.empty()) {
 					return false;
+				}
 
 				return true;
 			}
 
 			//chunked pass form_urlencoded 
 			bool chunked_parse_form_urlencoded() {
-				form_url_map_.clear();
-
 #ifdef WHEEL_ENABLE_GZIP
 				if (has_gzip_) {
 					bool r = uncompress();
@@ -285,7 +273,7 @@ namespace wheel {
 					}
 				}
 #endif
-				auto body_str = get_part_data();
+				const auto body_str = get_part_data();
 				form_url_map_ = parse_query(body_str);
 				if (form_url_map_.empty()) {
 					return false;
@@ -303,24 +291,36 @@ namespace wheel {
 			}
 
 			int parse_header(std::size_t last_len, size_t start =0) {
-				if (!copy_headers_.empty()) {
-					copy_headers_.clear();
-				}
-
 				const char* method = nullptr;
 				size_t method_len = 0;
 				const char* url = nullptr;
 				size_t url_len = 0;
-				num_headers_ = sizeof(headers_) / sizeof(headers_[0]);
+				struct phr_header headers[32] = { 0 };
+				size_t num_headers = sizeof(headers) / sizeof(headers[0]);
+
 				header_len_ = phr_parse_request(buffer_.data(), cur_size_, &method,
 					&method_len, &url, &url_len,
-					&minor_version_, headers_, &num_headers_, last_len);
+					&minor_version_, headers, &num_headers, last_len);
 
 				if (header_len_ < 0) {
 					return header_len_;
 				}
 
 				check_gzip();
+
+				{
+					auto filename = get_multipart_field_name("filename");
+
+					if (!filename.empty()) {
+						copy_headers_.emplace_back("filename", std::move(filename));
+					}
+
+					for (size_t i = 0; i < num_headers; i++) {
+						copy_headers_.emplace_back(std::string(headers[i].name, headers[i].name_len),
+							std::string(headers[i].value, headers[i].value_len));
+					}
+				}
+
 				const std::string body_len = get_header_value("content-length");
 				if (body_len.empty()) {
 					auto transfer_encoding = get_header_value("transfer-encoding");
@@ -406,17 +406,6 @@ namespace wheel {
 			}
 
 			std::string get_header_value(std::string key) const {
-				if (copy_headers_.empty()) {
-					for (size_t i = 0; i < num_headers_; i++) {
-						if (wheel::unit::iequal(headers_[i].name, headers_[i].name_len, key.data())) {
-							return std::string(headers_[i].value, headers_[i].value_len);
-						}
-
-					}
-
-					return {};
-				}
-
 				auto it = std::find_if(copy_headers_.begin(), copy_headers_.end(), [key](auto& pair) {
 					if (wheel::unit::iequal(pair.first.data(), pair.first.size(), key.data())) {
 						return true;
@@ -464,9 +453,6 @@ namespace wheel {
 
 			void set_current_size(size_t size) {
 				cur_size_ = size;
-				if (size == 0) {
-					copy_method_url_headers();
-				}
 			}
 
 			void reset() {
@@ -484,6 +470,7 @@ namespace wheel {
 				files_.clear();
 				multipart_headers_.clear();
 				client_chunked_data_.clear();
+
 				memset(&buffer_[0], 0,buffer_size());
 			}
 
@@ -689,23 +676,6 @@ namespace wheel {
 				buffer_.resize(size);
 			}
 
-
-			void copy_method_url_headers() {
-				auto filename = get_multipart_field_name("filename");
-
-				if (!filename.empty()) {
-					copy_headers_.emplace_back("filename", std::move(filename));
-				}
-
-				if (header_len_ < 0)
-					return;
-
-				for (size_t i = 0; i < num_headers_; i++) {
-					copy_headers_.emplace_back(std::string(headers_[i].name, headers_[i].name_len),
-						std::string(headers_[i].value, headers_[i].value_len));
-				}
-			}
-
 			void check_gzip() {
 				auto encoding = get_header_value("content-encoding");
 				if (encoding.empty()) {
@@ -767,8 +737,6 @@ namespace wheel {
 			data_proc_state state_ = data_proc_state::data_begin;
 			std ::string buffer_;
 			size_t cur_size_ = 0;
-			size_t num_headers_ = 0;
-			struct phr_header headers_[32];
 			int minor_version_;
 			int header_len_;
 			size_t body_len_;

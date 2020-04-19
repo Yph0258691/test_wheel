@@ -8,6 +8,7 @@
 #include <deque>
 #include <queue>
 #include <list>
+#include <cstddef>
 
 namespace wheel {
 	namespace traits {
@@ -60,9 +61,13 @@ namespace wheel {
 
 		template<class...> struct disjunction : std::false_type { };
 		template<class B1> struct disjunction<B1> : B1 { };
+
+		template< bool B, class T, class F >
+		using conditional_t = typename std::conditional<B, T, F>::type;
+
 		template<class B1, class... Bn>
 		struct disjunction<B1, Bn...>
-			: std::conditional_t<bool(B1::value), B1, disjunction<Bn...>> { };
+			: conditional_t<bool(B1::value), B1, disjunction<Bn...>> { };
 
 		template <typename T, typename Tuple>
 		struct has_type;
@@ -113,7 +118,6 @@ namespace wheel {
 		template<typename T, typename... Args>
 		using has_after = is_detected<has_after_t, T, Args...>;
 
-
 		//c++17写法
 		//template <typename T, typename... Us>
 		//struct has_type<T, std::tuple<Us...>> : std::disjunction<std::is_same<T, Us>...> {}
@@ -121,17 +125,83 @@ namespace wheel {
 		template<typename T>
 		constexpr bool  is_int64_v = std::is_same<T, int64_t>::value || std::is_same<T, uint64_t>::value;
 
+		template< class T >
+		using remove_pointer_t = typename std::remove_pointer<T>::type;
+
+		template< class T >
+		using remove_reference_t = typename std::remove_reference<T>::type;
+
+		template< class T >
+		using decay_t = typename std::decay<T>::type;
+
 		template<class T>
-		constexpr bool is_char_array_v = std::is_array<T>::value && std::is_same<char, std::remove_pointer_t<std::decay_t<T>>>::value;
+		constexpr bool is_char_array_v = std::is_array<T>::value && std::is_same<char,remove_pointer_t<decay_t<T>>>::value;
 
 		template<typename T>
 		struct is_string
 			: public disjunction<std::is_same<char*, typename std::decay<T>::type>,
-			std::is_same<const char*,typename std::decay<T>::type>,
+			std::is_same<const char*, typename std::decay<T>::type>,
 			std::is_same<std::string, typename std::decay<T>::type>
 			> {
 
-			};
+		};
+
+		/**************************make_integer_sequence*****************************************************/
+
+		template<typename T, T... Ints>
+		struct integer_sequence
+		{
+			static_assert(std::is_integral<T>::value, "integer_sequence<T, I...> requires T to be an integral type.");
+			using value_type =T;
+			static constexpr std::size_t size() { return sizeof...(Ints); }
+		};
+
+		template<std::size_t... Ints>
+		using index_sequence = integer_sequence<std::size_t, Ints...>;
+
+		template<typename T, std::size_t N, T... Is>
+		struct make_integer_sequence : make_integer_sequence<T, N - 1, N - 1, Is...> {};
+
+		template<typename T, T... Is>
+		struct make_integer_sequence<T, 0, Is...> : integer_sequence<T, Is...> {};
+
+		template<std::size_t N>
+		using make_index_sequence = make_integer_sequence<std::size_t, N>;
+
+		template<typename... T>
+		using index_sequence_for = make_index_sequence<sizeof...(T)>;
+		/******************************smart pointer***************************************************************/
+
+// STRUCT TEMPLATE enable_if
+		template <bool _Test, class _Ty = void>
+		struct enable_if {}; // no member "type" when !_Test
+
+		template <class _Ty>
+		struct enable_if<true, _Ty> { // type is _Ty for _Test
+			using type = _Ty;
+		};
+
+		template <bool _Test, class _Ty = void>
+		using enable_if_t = typename enable_if<_Test, _Ty>::type;
+
+		template< class T >
+		using remove_extent_t = typename std::remove_extent<T>::type;
+
+		// FUNCTION TEMPLATE make_unique
+		template <class _Ty, class... _Types, enable_if_t<!std::is_array<_Ty>::value, int> = 0>
+		std::unique_ptr<_Ty> make_unique(_Types&&... _Args) { // make a unique_ptr
+			return std::unique_ptr<_Ty>(new _Ty(std::forward<_Types>(_Args)...));
+		}
+
+		template <class _Ty, enable_if_t<std::is_array<_Ty>::value && std::extent<_Ty>::value == 0, int> = 0>
+		std::unique_ptr<_Ty> make_unique(size_t _Size) { // make a unique_ptr
+			using _Elem = remove_extent_t<_Ty>;
+			return std::unique_ptr<_Ty>(new _Elem[_Size]());
+		}
+
+		template <class _Ty, class... _Types, enable_if_t<std::extent<_Ty>::value != 0, int> = 0>
+		void make_unique(_Types&&...) = delete;
+
 
 	}//traits
 }//wheel

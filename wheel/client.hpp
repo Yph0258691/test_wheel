@@ -13,7 +13,7 @@ namespace wheel {
 				try{
 					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
 					tcp_handler_ = std::make_shared<tcp_handle>(strand_, header_size_, packet_size_offset_, packet_cmd_offset_);
-					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
+					timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}catch (const std::exception&ex){
 					strand_ = nullptr;
 					tcp_handler_ = nullptr;
@@ -39,7 +39,7 @@ namespace wheel {
 				{
 					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
 					tcp_handler_ = std::make_shared<tcp_handle>(strand_, header_size_, packet_size_offset_, packet_cmd_offset_);
-					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
+					timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}
 				catch (const std::exception&ex)
 				{

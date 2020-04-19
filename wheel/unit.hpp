@@ -10,7 +10,7 @@
 #include <sstream>
 #include <tuple>
 #include <fstream>
-#include <type_traits>
+#include "traits.hpp"
 #include "md5.hpp"
 
 #if _MSC_VER
@@ -639,7 +639,7 @@ namespace wheel {
 
 		//单个tuple去索引
 		template <typename Tuple, typename F, std::size_t...Is>
-		void tuple_switch(const std::size_t i, Tuple&& t, F&& f, std::index_sequence<Is...>) {
+		void tuple_switch(const std::size_t i, Tuple&& t, F&& f, wheel::traits::index_sequence<Is...>) {
 			[](...) {}(
 				(i == Is && (
 				(void)std::forward<F>(f)(std::get<Is>(std::forward<Tuple>(t))), false))...
@@ -649,10 +649,10 @@ namespace wheel {
 		template <typename Tuple, typename F>
 		void tuple_switch(const std::size_t i, Tuple&& t, F&& f) {
 			static constexpr auto N =
-				std::tuple_size<std::remove_reference_t<Tuple>>::value;
+				std::tuple_size < wheel::traits::remove_reference_t<Tuple >>::value;
 
 			tuple_switch(i, std::forward<Tuple>(t), std::forward<F>(f),
-				std::make_index_sequence<N>{});
+				wheel::traits::make_index_sequence<N>{});
 		}
 
 		/**********使用例子********/
@@ -666,8 +666,8 @@ namespace wheel {
 
 
 		template<typename F, typename...Ts, std::size_t...Is>
-		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func, std::index_sequence<Is...>) {
-			constexpr auto SIZE = std::tuple_size<std::remove_reference_t<decltype(tuple)>>::value;
+		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func, wheel::traits::index_sequence<Is...>) {
+			constexpr auto SIZE = std::tuple_size<wheel::traits::remove_reference_t<decltype(tuple)>>::value;
 			if constexpr(SIZE >0){
 				using expander = int[];
 				(void)expander {
@@ -678,13 +678,13 @@ namespace wheel {
 
 		template<typename F, typename...Ts>
 		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func) {
-			for_each_tuple_front(tuple, func, std::make_index_sequence<sizeof...(Ts)>());
+			for_each_tuple_front(tuple, func,wheel::traits::make_index_sequence<sizeof...(Ts)>());
 		}
 
 		template<typename F, typename...Ts, std::size_t...Is>
-		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, std::index_sequence<Is...>) {
+		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, wheel::traits::index_sequence<Is...>) {
 			//匿名构造函数调用
-			constexpr auto SIZE = std::tuple_size<std::remove_reference_t<decltype(tuple)>>::value;
+			constexpr auto SIZE = std::tuple_size<wheel::traits::remove_reference_t<decltype(tuple)>>::value;
 			if constexpr (SIZE >0){
 				[](...) {}(0,
 					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
@@ -694,13 +694,13 @@ namespace wheel {
 
 		template<typename F, typename...Ts>
 		void for_each_tuple_back(std::tuple<Ts...>& tuple, F func) {
-			for_each_tuple_back(tuple, func, std::make_index_sequence<sizeof...(Ts)>());
+			for_each_tuple_back(tuple, func, wheel::traits::make_index_sequence<sizeof...(Ts)>());
 		}
 
 		//单个参数传单个参数，没有index(tuple不能空)
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each0(std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>) {
-			constexpr auto N = std::tuple_size <std::remove_reference_t<decltype(t)>>::value;
+		constexpr void for_each0(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
+			constexpr auto N = std::tuple_size <wheel::traits::remove_reference_t<decltype(t)>>::value;
 
 			//编译器编译时，会做判断
 			if constexpr (N>0){
@@ -712,7 +712,7 @@ namespace wheel {
 
 
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each_l(std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>) {
+		constexpr void for_each_l(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
 
 			constexpr auto size = sizeof...(Idx);
 			if constexpr (size > 0) {
@@ -724,7 +724,7 @@ namespace wheel {
 		}
 
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each_r(std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>) {
+		constexpr void for_each_r(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
 			constexpr auto size = sizeof...(Idx);
 			if constexpr (size > 0) {
 				using expander = int[];

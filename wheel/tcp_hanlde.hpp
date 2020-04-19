@@ -11,6 +11,7 @@
 #include"unit.hpp"
 #include "picohttpparser.hpp"
 #include "io_service_poll.hpp"
+#include "traits.hpp"
 
 namespace wheel {
 	namespace tcp_socket {
@@ -42,7 +43,7 @@ namespace wheel {
 				try
 				{
 					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
-					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
+					timer_ = wheel::traits ::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}catch (std::exception &ex){
 					std::cout << ex.what() << std::endl;
 					socket_ = nullptr;
@@ -368,7 +369,7 @@ namespace wheel {
 
 				try
 				{
-					recv_buffer_ = std::make_unique<char[]>(g_packet_buffer_size);
+					recv_buffer_ = wheel::traits::make_unique<char[]>(g_packet_buffer_size);
 				}catch (std::exception & ex) {
 					recv_buffer_ = nullptr;
 					std::cout << ex.what() << std::endl;

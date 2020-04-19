@@ -4,6 +4,7 @@
 #include <thread>
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include "traits.hpp"
 
 namespace wheel {
 	namespace unit {
@@ -13,9 +14,9 @@ namespace wheel {
 		public:
 			timer(Trigger_type trigger)
 			:trigger_(trigger){
-				ios_ = std::make_unique<boost::asio::io_service>();
-				timer_ = std::make_unique<boost::asio::steady_timer>(*ios_);
-				thread_ = std::make_unique<std::thread>([this] {ios_->run();});
+				ios_ = wheel::traits::make_unique<boost::asio::io_service>();
+				timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*ios_);
+				thread_ = wheel::traits::make_unique<std::thread>([this] {ios_->run();});
 			}
 			
 			~timer() {

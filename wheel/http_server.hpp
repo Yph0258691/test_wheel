@@ -80,7 +80,7 @@ namespace wheel {
 			}
 		private:
 			void make_session() {
-				if (accept_ == nullptr) {
+				if (accept_ == nullptr || strand_ == nullptr) {
 					return;
 				}
 

@@ -4,6 +4,8 @@
 #include "paser.hpp"
 #include "read_tream_format.hpp"
 #include "write_tream_format.hpp"
+#include "traits.hpp"
+
 namespace wheel {
 
 	const char g_protocol_head_flag[3] = "wl";
@@ -32,7 +34,7 @@ namespace wheel {
 		}
 
 		virtual std::int32_t read_stream(const char* data, const std::size_t data_size, streams& stream_vec) {
-			buffer_ = std::make_unique<char[]>(data_size);
+			buffer_ = wheel::traits::make_unique<char[]>(data_size);
 
 			if (buffer_ == nullptr){
 				return -1;

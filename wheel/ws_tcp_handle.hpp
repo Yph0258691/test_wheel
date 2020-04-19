@@ -50,7 +50,7 @@ namespace wheel {
 				try
 				{
 					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
-					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
+					timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}catch (const std::exception&ex){
 					std::cout << ex.what() << std::endl;
 					socket_ = nullptr;
@@ -76,7 +76,7 @@ namespace wheel {
 				try
 				{
 					socket_ = std::make_shared<boost::asio::ip::tcp::socket>(*io_service_poll::get_instance().get_io_service());
-					timer_ = std::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
+					timer_ = wheel::traits::make_unique<boost::asio::steady_timer>(*io_service_poll::get_instance().get_io_service());
 				}
 				catch (const std::exception&ex){
 					std::cout << ex.what() << std::endl;
@@ -397,7 +397,7 @@ namespace wheel {
 				}
 
 				recv_buffer_size_ = g_packet_buffer_size;
-				recv_buffer_ = std::make_unique<char[]>(g_packet_buffer_size);
+				recv_buffer_ = wheel::traits::make_unique<char[]>(g_packet_buffer_size);
 				socket_->async_receive(boost::asio::buffer(&recv_buffer_[0], recv_buffer_size_),strand_->wrap([this](const boost::system::error_code& ec, size_t bytes_transferred) {
 					if (ec) {
 						set_connect_status(disconnect);
@@ -423,7 +423,7 @@ namespace wheel {
 					return;
 				}
 
-				recv_buffer_ = std::make_unique<char[]>(recv_buffer_size_);
+				recv_buffer_ = wheel::traits::make_unique<char[]>(recv_buffer_size_);
 				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0],recv_buffer_size_),strand_->wrap([this](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec.value() == 0) {
 						bool is_http = false;
@@ -435,7 +435,7 @@ namespace wheel {
 								std::string msg = web_socket_hand->handle_shark_respond(get_header_info("Sec-WebSocket-Key"));
 								to_send(msg.c_str(), msg.size());
 								if (ws_timer_heart_ == nullptr) {
-									ws_timer_heart_ = std::make_unique<wheel::unit::timer>(std::bind(&ws_tcp_handle::close_socket, this));
+									ws_timer_heart_ = wheel::traits::make_unique<wheel::unit::timer>(std::bind(&ws_tcp_handle::close_socket, this));
 								}
 
 								ws_ping();
@@ -465,7 +465,7 @@ namespace wheel {
 					return;
 				}
 
-				recv_buffer_ = std::make_unique<char[]>(g_packet_buffer_size);
+				recv_buffer_ = wheel::traits::make_unique<char[]>(g_packet_buffer_size);
 				socket_->async_read_some(boost::asio::buffer(&recv_buffer_[0], g_packet_buffer_size),strand_->wrap([this, send_handleshake_key](const boost::system::error_code ec, size_t bytes_transferred) {
 					if (ec.value() == 0) {
 						//handleshake check
@@ -473,7 +473,7 @@ namespace wheel {
 						bool falg = web_socket_hand->compare_handle_shark_key(unit::find_substr(&recv_buffer_[0],"Sec-WebSocket-Accept",":"),send_handleshake_key);
 						if (falg){
 							if (ws_timer_heart_ == nullptr) {
-								ws_timer_heart_ = std::make_unique<wheel::unit::timer>(std::bind(&ws_tcp_handle::close_socket, this));
+								ws_timer_heart_ = wheel::traits::make_unique<wheel::unit::timer>(std::bind(&ws_tcp_handle::close_socket, this));
 							}
 
 							ws_ping();

@@ -15,6 +15,7 @@
 
 #if _MSC_VER
 #pragma warning(disable:4984)
+#pragma warning(disable:4996)
 #else
 #pragma GCC system_header
 #endif
@@ -668,12 +669,23 @@ namespace wheel {
 		template<typename F, typename...Ts, std::size_t...Is>
 		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func, wheel::traits::index_sequence<Is...>) {
 			constexpr auto SIZE = std::tuple_size<wheel::traits::remove_reference_t<decltype(tuple)>>::value;
-			if constexpr(SIZE >0){
+#if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
+			if (constexpr(SIZE >0)) {
 				using expander = int[];
 				(void)expander {
 					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 				};
 			}
+#else
+			if constexpr(SIZE >0) {
+				using expander = int[];
+				(void)expander {
+					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
+				};
+		}
+#endif // _MSC_VER <=1923
+
+
 		}
 
 		template<typename F, typename...Ts>
@@ -685,11 +697,21 @@ namespace wheel {
 		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, wheel::traits::index_sequence<Is...>) {
 			//匿名构造函数调用
 			constexpr auto SIZE = std::tuple_size<wheel::traits::remove_reference_t<decltype(tuple)>>::value;
-			if constexpr (SIZE >0){
+#if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
+			if (constexpr (SIZE >0)) {
 				[](...) {}(0,
 					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 					);
 			}
+#else
+			if constexpr (SIZE >0) {
+				[](...) {}(0,
+					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
+					);
+		}
+#endif // #ifdef _MSC_VER <=1900
+
+
 		}
 
 		template<typename F, typename...Ts>

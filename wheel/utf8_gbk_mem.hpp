@@ -1,5 +1,12 @@
 #ifndef utf8_gbk_mem_h__
 #define utf8_gbk_mem_h__
+
+#if _MSC_VER
+#pragma warning(disable:4267)
+#else
+#pragma GCC system_header
+#endif
+
 #include "unicode.h"
 
 namespace wheel {

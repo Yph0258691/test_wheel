@@ -179,7 +179,7 @@ namespace wheel {
 					constexpr bool has_befor_mtd = wheel::traits::has_before<decltype(item), request&, response&>::value;
 					if constexpr (has_befor_mtd)
 						r = item.before(req, res);
-					}, std::make_index_sequence<std::tuple_size<Tuple>::value>{});
+					}, wheel::traits::make_index_sequence<std::tuple_size<Tuple>::value>{});
 
 				return r;
 			}
@@ -194,7 +194,7 @@ namespace wheel {
 					constexpr bool has_after_mtd = wheel::traits::has_after<decltype(item), request&, response&>::value;
 					if constexpr (has_after_mtd)
 						r = item.after(req, res);
-					}, std::make_index_sequence<std::tuple_size<Tuple>::value>{});
+					}, wheel::traits::make_index_sequence<std::tuple_size<Tuple>::value>{});
 			}
 
 			template<typename T, typename Tuple>
@@ -207,7 +207,7 @@ namespace wheel {
 					constexpr bool has_after_mtd = wheel::traits::has_after<decltype(item), T, request&, response&>::value;
 					if constexpr (has_after_mtd)
 						r = item.after(std::move(result), req, res);
-				}, std::make_index_sequence<std::tuple_size<Tuple>::value>{});
+				}, wheel::traits::make_index_sequence<std::tuple_size<Tuple>::value>{});
 			}
 
 			typedef std::pair<std::array<char, 26>, std::function<void(request&, response&)>> invoker_function;

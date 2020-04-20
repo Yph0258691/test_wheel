@@ -160,7 +160,7 @@ if(USE_BOOSTSSLLIBARY)
       message(STATUS  "please OPENSSL_INCLUDE_DIRS and OPENSSL_LIBRARIES")
     endif(OPENSSL_INCLUDE_DIRS)
    else(CMAKE_SYSTEM_NAME MATCHES "Windows")
-    find_package(OpenSSL 1.0.1e REQUIRED)
+    find_package(OpenSSL 1.0.1 REQUIRED)
   endif()
 endif(USE_BOOSTSSLLIBARY)
 

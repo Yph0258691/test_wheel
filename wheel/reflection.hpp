@@ -234,7 +234,7 @@ static auto reflector_reflect_members(ClassName const&) \
 		template <typename T>
 		constexpr auto get(T const& t) {
 			using M = decltype(reflector_reflect_members(t));
-			return get_impl(t, std::make_index_sequence<M::size()>{});
+			return get_impl(t, wheel::traits::make_index_sequence<M::size()>{});
 		}
 
 		template<typename T, size_t  I>
@@ -299,7 +299,7 @@ static auto reflector_reflect_members(ClassName const&) \
 		}
 
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each(std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>) {
+		constexpr void for_each(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
 			using expander = int[];
 
 			(void)expander {
@@ -308,7 +308,7 @@ static auto reflector_reflect_members(ClassName const&) \
 		}
 
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each(const std::tuple<Args...>& t, F&& f, std::index_sequence<Idx...>) {
+		constexpr void for_each(const std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
 			using expander = int[];
 
 			(void)expander {

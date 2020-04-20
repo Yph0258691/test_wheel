@@ -7,8 +7,8 @@ cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Debu
 cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Release -DUSE_ZIBLIBARY=ON .. 
 cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Debug -DUSE_ZIBLIBARY=ON  ..
 #使用ssl
-cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Release -DUSE_BOOSTSSLLIBARY=ON .. 
-cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Debug -DUSE_BOOSTSSLLIBARY=ON ..
+cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DOPENSSL_INCLUDE_DIRS=/usr/local/include -DCMAKE_BUILD_TYPE=Release -DUSE_BOOSTSSLLIBARY=ON .. 
+cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DOPENSSL_INCLUDE_DIRS=/usr/local/include -DCMAKE_BUILD_TYPE=Debug -DUSE_BOOSTSSLLIBARY=ON ..
 
 #cppcheck一起编译
 cmake -DCMAKE_INSTALL_PREFIX=/home/yinpinghua/test_wheel -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_CPPCHECK:FILEPATH=cppcheck ..

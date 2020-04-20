@@ -26,6 +26,9 @@ namespace wheel {
 					std::string mbstr;
 					mbstr.resize(50);
 					std::time_t tm = std::chrono::system_clock::to_time_t(last_time_);
+#ifdef _WINDOWS_
+					setlocale(LC_TIME, "en_us.utf-8");
+#endif		
 					std::strftime(&mbstr[0], mbstr.size(), "%a, %d %b %Y %T GMT", std::localtime(&tm));
 					mbstr.resize(strlen(mbstr.c_str()));
 					last_date_str_ = mbstr;
@@ -37,43 +40,16 @@ namespace wheel {
 				return std::move(rep_str_);
 			}
 
-			template<status_type status, res_content_type content_type, size_t N>
-			constexpr auto set_status_and_content(const char(&content)[N], content_encoding encoding = content_encoding::none) {
-				constexpr auto status_str = to_rep_string(status);
-				constexpr auto type_str = get_content_type(content_type);
-				constexpr auto len_str = num_to_string<N - 1>::value;
-
-				rep_str_.append(status_str).append(len_str.data(), len_str.size()).append(type_str);
-				if (res_type_ == res_content_type::multipart) {
-					std::string random_key;
-					unit::random_str(random_key, 16);
-					std::string raw_key = base64_encode(random_key);
-					rep_str_.append(raw_key);
-					rep_str_.append(crlf);
-				}
-
-				rep_str_.append(rep_server);
-
-				if (need_response_time_) {
-					append_respone_date_time();
-				}
-
-				rep_str_.append(crlf);
-
-				if (strlen(content) == 0) {
+			void build_response_str() {
+				if (headers_.empty()){
+					set_status_and_content(status_type::bad_gateway, "http package is empty");
 					return;
 				}
 
-				rep_str_.append(content);
-			}
-
-			void build_response_str() {
 				rep_str_.append(to_rep_string(status_));
 
-				if (!headers_.empty()) {
-					for (auto& header : headers_) {
-						rep_str_.append(header.first).append(":").append(header.second).append(crlf);
-					}
+				for (auto& header : headers_) {
+					rep_str_.append(header.first).append(":").append(header.second).append(crlf);
 				}
 
 				std::string temp;
@@ -86,7 +62,13 @@ namespace wheel {
 				}
 
 				if (res_type_ != res_content_type::none) {
-					rep_str_.append(get_content_type(res_type_));
+					std::string content_type = get_content_type(res_type_);
+					if (content_type.empty()){
+						set_status_and_content(status_type::bad_gateway, "send content type is failure");
+						return;
+					}
+
+					rep_str_.append(content_type);
 				}
 
 				rep_str_.append(rep_server);
@@ -96,24 +78,50 @@ namespace wheel {
 				}
 
 				rep_str_.append(crlf);
-				if (content_.empty()) {
-					return;
-				}
-
 				rep_str_.append(std::move(content_));
 			}
 
-			void build_response_multipart_str() {
-				rep_str_.append(to_rep_string(status_));
-
-				if (rep_str_.empty()) {
+			void build_chunked_response_str() {
+				if (headers_.empty()){
+					trans_type_ = transfer_type::normal;
+					set_status_and_content(status_type::bad_gateway, "http package header is empty");
 					return;
 				}
 
-				if (!headers_.empty()) {
-					for (auto& header : headers_) {
-						rep_str_.append(header.first).append(":").append(header.second).append(crlf);
-					}
+				chukend_header_.append(to_rep_string(status_));
+
+				for (auto& header : headers_) {
+					chukend_header_.append(header.first).append(":").append(header.second).append(crlf);
+				}
+
+				std::string content_type = get_content_type(res_type_);
+				if (content_type.empty()){
+					trans_type_ = transfer_type::normal;
+					set_status_and_content(status_type::bad_gateway, "send content_type is failure");
+					return;
+				}
+
+				chukend_header_.append(content_type);
+
+				chukend_header_.append(rep_server);
+
+				if (need_response_time_) {
+					append_chunked_pass_respone_date_time();
+				}
+
+				chukend_header_.append(crlf);
+			}
+
+			void build_response_multipart_str() {
+				if (headers_.empty()){
+					set_status_and_content(status_type::bad_gateway, "http package header is empty");
+					return;
+				}
+
+				rep_str_.append(to_rep_string(status_));
+
+				for (auto& header : headers_) {
+					rep_str_.append(header.first).append(":").append(header.second).append(crlf);
 				}
 
 				std::string r_str;
@@ -152,33 +160,35 @@ namespace wheel {
 				}
 
 				rep_str_.append(crlf);
-				if (content_.empty()) {
-					return;
-				}
-
 				rep_str_.append(std::move(content_));
 			}
 
 			//build chunked header
 			void build_chunkead_header()
 			{
-				chukend_header_.append(to_rep_string(status_));
-
-				if (chukend_header_.empty()) {
+				if (headers_.empty()){
+					trans_type_ = transfer_type::normal;
+					set_status_and_content(status_type::bad_gateway, "http package header is empty");
 					return;
 				}
 
-				if (!headers_.empty()) {
-					for (auto& header : headers_) {
-						chukend_header_.append(header.first).append(":").append(header.second).append(crlf);
-					}
+				chukend_header_.append(to_rep_string(status_));
+				for (auto& header : headers_) {
+					chukend_header_.append(header.first).append(":").append(header.second).append(crlf);
 				}
 
-				if (res_type_ == res_content_type::multipart){
+				if (res_type_ == res_content_type::multipart) {
 					std::string r_str;
 					unit::random_str(r_str, 16);
 					std::string raw_key = base64_encode(r_str);
 					boundary_.append(boundary_demil_).append(raw_key);
+
+					std::string content_type = get_content_type(res_type_);
+					if (content_type.empty()){
+						trans_type_ = transfer_type::normal;
+						set_status_and_content(status_type::bad_gateway, "send content_type is failure");
+						return;
+					}
 
 					chukend_header_.append(get_content_type(res_type_));
 					chukend_header_.append(boundary_).append(crlf);
@@ -193,12 +203,10 @@ namespace wheel {
 				chukend_header_.append(crlf);
 			}
 
-			//build chuked body
-			void build_chunkead_body()
+			//build chuked multipart body
+			void build_chunkead_multipart_body()
 			{
-				if (res_type_ == res_content_type::multipart){
-					build_response_multipart_data();
-				}
+				build_response_multipart_data();
 			}
 
 			void build_response_multipart_data()
@@ -232,7 +240,7 @@ namespace wheel {
 					context.append(str);
 					chunked_data_.push_back(std::move(context));
 				}
-				
+
 				std::string end_chunked;
 				end_chunked.append(unit::to_hex_string(boundary_.size())).append(crlf).append(boundary_).append(crlf);
 				chunked_data_.push_back(std::move(end_chunked));
@@ -240,29 +248,28 @@ namespace wheel {
 			}
 
 			void build_response_urlencoded_str(content_encoding encoding) {
-				rep_str_.append(to_rep_string(status_));
-
-				if (rep_str_.empty() || res_type_ != res_content_type::urlencoded) {
+				if (headers_.empty()){
+					set_status_and_content(status_type::bad_gateway, "http package header is empty");
 					return;
 				}
 
-				if (!headers_.empty()) {
-					for (auto& header : headers_) {
-						rep_str_.append(header.first).append(":").append(header.second).append("\r\n");
-					}
+				rep_str_.append(to_rep_string(status_));
+
+				for (auto& header : headers_) {
+					rep_str_.append(header.first).append(":").append(header.second).append(crlf);
 				}
 
 				size_t size = urlencoded_datas.size();
 				size_t count = 0;
-				for (int i =0;i<size;++i){
+				for (int i = 0; i < size; ++i) {
 					content_.append(urlencoded_datas[i].first).append("=").append(urlencoded_datas[i].second);
-					if (++count <size){
+					if (++count < size) {
 						content_.append("&");
 					}
 				}
 
 #ifdef WHEEL_ENABLE_GZIP
-				if (encoding == content_encoding::gzip){
+				if (encoding == content_encoding::gzip) {
 					std::string compress_str;
 					bool r = compress(compress_str, content_);
 					if (!r) {
@@ -277,37 +284,31 @@ namespace wheel {
 				temp.resize(64);
 				itoa_fwd((int)content_.size(), &temp[0]);
 				std::string buff(temp.c_str(), strlen(temp.c_str()));
-				rep_str_.append("Content-Length: ").append(buff).append("\r\n");
+				rep_str_.append("Content-Length: ").append(buff).append(crlf);
 				rep_str_.append(rep_server);
 
 				if (need_response_time_) {
 					append_respone_date_time();
 				}
 
-				rep_str_.append("\r\n");
-				if (content_.empty()) {
-					return;
-				}
-
+				rep_str_.append(crlf);
 				rep_str_.append(std::move(content_));
 			}
 
 			void build_response_chunked_urlencoded_str(content_encoding encoding) {
-				chukend_header_.append(to_rep_string(status_));
-
-				if (chukend_header_.empty() || res_type_ != res_content_type::urlencoded) {
-					return;
+				if (headers_.empty()){
+					trans_type_ = transfer_type::normal;
+					set_status_and_content(status_type::bad_gateway, "http package is empty");
 				}
 
-				if (!headers_.empty()) {
-					for (auto& header : headers_) {
-						chukend_header_.append(header.first).append(":").append(header.second).append("\r\n");
-					}
+				chukend_header_.append(to_rep_string(status_));
+				for (auto& header : headers_) {
+					chukend_header_.append(header.first).append(":").append(header.second).append(crlf);
 				}
 
 				size_t size = urlencoded_datas.size();
 				size_t count = 0;
-				for (int i = 0; i < size; ++i) {
+				for (size_t i = 0; i < size; ++i) {
 					content_.append(urlencoded_datas[i].first).append("=").append(urlencoded_datas[i].second);
 					if (++count < size) {
 						content_.append("&");
@@ -343,9 +344,8 @@ namespace wheel {
 					append_chunked_pass_respone_date_time();
 				}
 
-				chukend_header_.append("\r\n");
+				chukend_header_.append(crlf);
 			}
-
 
 			std::vector<boost::asio::const_buffer> to_buffers() {
 				std::vector<boost::asio::const_buffer> buffers;
@@ -391,60 +391,87 @@ namespace wheel {
 				build_response_str();
 			}
 
-			void set_status_and_content(status_type status, std::string&& content, res_content_type res_type = res_content_type::none, content_encoding encoding = content_encoding::none) {
+			void set_status_and_content(status_type status, std::string&& content, res_content_type res_type = res_content_type::none,
+				content_encoding encoding = content_encoding::none, transfer_type trans_type = transfer_type::normal) {
 				status_ = status;
 				res_type_ = res_type;
 
-#ifdef WHEEL_ENABLE_GZIP
-				if (encoding == content_encoding::gzip) {
-					std::string encode_str;
-					bool r = gzip_codec::compress(std::string(content.data(), content.length()), encode_str, true);
-					if (!r) {
-						set_status_and_content(status_type::internal_server_error, "gzip compress error");
-					}
-					else {
-						add_header("Content-Encoding", "gzip");
-						set_content(std::move(encode_str));
-					}
-				}
-				else
-#endif
-					set_content(std::move(content));
-
-				build_response_str();
-			}
-
-			void set_mstatus_and_content(status_type status,transfer_type trans_type = transfer_type::normal) {
-
-				status_ = status;
-				res_type_ = res_content_type::multipart;
-
-				if (trans_type == transfer_type::chunked){
+				if (trans_type == transfer_type::chunked) {
 					add_header("Transfer-Encoding", "chunked");
 					trans_type_ = transfer_type::chunked;
 				}
 
-				if (trans_type_ == transfer_type::normal){
+				std::string encode_str;
+#ifdef WHEEL_ENABLE_GZIP
+				if (encoding == content_encoding::gzip) {
+					bool r = gzip_codec::compress(std::string(content.data(), content.length()), encode_str, true);
+					if (!r) {
+						set_status_and_content(status_type::internal_server_error, "gzip compress error");
+						return;
+					}
+					else {
+						add_header("Content-Encoding", "gzip");
+					}
+
+					if (trans_type_ == transfer_type::chunked) {
+						chunked_data_.emplace_back(encode_str);
+						build_chunked_response_str();
+						return;
+			       }
+
+					set_content(std::move(encode_str));
+				}
+#else
+				if (trans_type_ == transfer_type::chunked) {
+					std::string len;
+					len.resize(64);
+					itoa_fwd((int)content.size(), &len[0]);
+					std::string buff(len.c_str(), strlen(len.c_str()));
+
+					std::string data;
+					data.append(unit::to_hex_string(unit::stringDec_to_int(len.c_str()))).append(crlf).append(content).append(crlf).append(last_chunk).append(crlf);
+					chunked_data_.push_back(std::move(data));
+					build_chunked_response_str();
+					return;
+				}
+
+				set_content(std::move(content));
+#endif          
+				build_response_str();
+			}
+
+			/*********************************form-data数据chunked发送接口******************************************************/
+			void set_mstatus_and_content(status_type status, transfer_type trans_type = transfer_type::normal) {
+
+				status_ = status;
+				res_type_ = res_content_type::multipart;
+
+				if (trans_type == transfer_type::chunked) {
+					add_header("Transfer-Encoding", "chunked");
+					trans_type_ = transfer_type::chunked;
+				}
+
+				if (trans_type_ == transfer_type::normal) {
 					build_response_multipart_str();
 					return;
 				}
 
 				build_chunkead_header();
-				build_chunkead_body();
+				build_chunkead_multipart_body();
 			}
 
-			void set_urlencoded_status_and_content(status_type status, content_encoding encoding = content_encoding::none,transfer_type trans_type = transfer_type::normal) {
+			void set_urlencoded_status_and_content(status_type status, content_encoding encoding = content_encoding::none, transfer_type trans_type = transfer_type::normal) {
 
 				status_ = status;
 				res_type_ = res_content_type::urlencoded;
 
 #ifdef WHEEL_ENABLE_GZIP
-				if (encoding == content_encoding::gzip){
+				if (encoding == content_encoding::gzip) {
 					add_header("Content-Encoding", "gzip");
 				}
 #endif
 				add_header("Content-Type", "application/x-www-form-urlencoded");
-				if (trans_type == transfer_type::chunked){
+				if (trans_type == transfer_type::chunked) {
 					add_header("Transfer-Encoding", "chunked");
 					trans_type_ = transfer_type::chunked;
 					build_response_chunked_urlencoded_str(encoding);
@@ -539,21 +566,21 @@ namespace wheel {
 				req_headers_ = std::move(headers);
 			}
 
-			void render_json(const nlohmann::json& json_data)
+			void render_json(const nlohmann::json& json_data,transfer_type trans_type = transfer_type::normal)
 			{
 #ifdef  WHEEL_ENABLE_GZIP
-				set_status_and_content(status_type::ok, json_data.dump(), res_content_type::json, content_encoding::gzip);
+				set_status_and_content(status_type::ok, json_data.dump(), res_content_type::json, content_encoding::gzip, trans_type);
 #else
-				set_status_and_content(status_type::ok, json_data.dump(), res_content_type::json, content_encoding::none);
+				set_status_and_content(status_type::ok, json_data.dump(), res_content_type::json, content_encoding::none, trans_type);
 #endif
 			}
 
-			void render_string(std::string&& content)
+			void render_string(std::string&& content,transfer_type trans_type = transfer_type::normal)
 			{
 #ifdef  WHEEL_ENABLE_GZIP
-				set_status_and_content(status_type::ok, std::move(content), res_content_type::string, content_encoding::gzip);
+				set_status_and_content(status_type::ok, std::move(content), res_content_type::string, content_encoding::gzip,trans_type);
 #else
-				set_status_and_content(status_type::ok, std::move(content), res_content_type::string, content_encoding::none);
+				set_status_and_content(status_type::ok, std::move(content), res_content_type::string, content_encoding::none,trans_type);
 #endif
 			}
 
@@ -631,7 +658,7 @@ namespace wheel {
 					std::string mbstr;
 					mbstr.resize(50);
 					std::time_t tm = std::chrono::system_clock::to_time_t(t);
-					std::strftime(&mbstr[0], sizeof(mbstr), "%a, %d %b %Y %T GMT", std::localtime(&tm));
+					std::strftime(&mbstr[0],mbstr.size(), "%a, %d %b %Y %T GMT", std::localtime(&tm));
 					mbstr.resize(strlen(mbstr.c_str()));
 					last_date_str_ = mbstr;
 					rep_str_.append("Date: ").append(mbstr).append("\r\n");
@@ -651,7 +678,10 @@ namespace wheel {
 					std::string mbstr;
 					mbstr.resize(50);
 					std::time_t tm = std::chrono::system_clock::to_time_t(t);
-					std::strftime(&mbstr[0], sizeof(mbstr), "%a, %d %b %Y %T GMT", std::localtime(&tm));
+#ifdef _WINDOWS_
+					setlocale(LC_TIME, "en_us.utf-8");
+#endif			
+					std::strftime(&mbstr[0],mbstr.size(), "%a, %d %b %Y %T GMT", std::localtime(&tm));
 					mbstr.resize(strlen(mbstr.c_str()));
 					last_date_str_ = mbstr;
 					chukend_header_.append("Date: ").append(mbstr).append("\r\n");
@@ -662,7 +692,7 @@ namespace wheel {
 				}
 			}
 		private:
-			bool compress(std::string &dst,const std::string &src) {
+			bool compress(std::string& dst, const std::string& src) {
 				bool r = true;
 #ifdef WHEEL_ENABLE_GZIP
 				r = gzip_codec::compress(src, dst);

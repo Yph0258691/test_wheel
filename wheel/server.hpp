@@ -11,7 +11,15 @@ namespace wheel {
 		{
 		public:
 			server(const MessageEventObserver& recv_observer) :recv_observer_(recv_observer) {
-
+				try
+				{
+					strand_ = std::make_shared<boost::asio::io_service::strand>(*io_service_poll::get_instance().get_io_service());
+				}
+				catch (const std::exception & ex)
+				{
+					std::cout << ex.what() << std::endl;
+					exit(0);
+				}
 			}
 
 			server(const MessageEventObserver& recv_observer, int parser_type, std::size_t header_size,

@@ -121,17 +121,17 @@ else ()
 endif ()
 
 #使用cppcheck静态检查
-find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
-if (CMAKE_CXX_CPPCHECK)
-set(CMAKE_CXX_CPPCHECK "cppcheck")
-    list(
-        APPEND CMAKE_CXX_CPPCHECK 
-            "--enable=warning,style"
-            "--inconclusive"
-            "--force" 
-            "--inline-suppr"
-    )
-endif()
+#find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
+#if (CMAKE_CXX_CPPCHECK)
+#set(CMAKE_CXX_CPPCHECK "cppcheck")
+#    list(
+ #       APPEND CMAKE_CXX_CPPCHECK 
+ #           "--enable=warning,style"
+ #           "--inconclusive"
+ #           "--force" 
+ #           "--inline-suppr"
+    #)
+#endif()
 
 #是否增加zlib库
 option(USE_ZIBLIBARY "select to use zlib libary" OFF)
@@ -208,8 +208,8 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
  # add_definitions(-D_WIN32_WINNT=0x0501)
 
   #设置boost库的安装路径(BOOST_ROOT是安装路径)
-  #set(boost_lib_path "D:/project/C++Project/thirdpaty/boost/")
-  #set(BOOST_ROOT ${boost_lib_path})
+  set(boost_lib_path "D:/project/C++Project/thirdpaty/boost/")
+  set(BOOST_ROOT ${boost_lib_path})
   if(BOOST_ROOT)
   else(BOOST_ROOT)
     message(STATUS "please  cmake cmd pass set BOOT_ROOT path")

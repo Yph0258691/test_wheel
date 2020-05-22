@@ -207,13 +207,14 @@ namespace wheel {
 				seconds_ = seconds;
 			}
 
-			int connect(std::string ip, int port,const std::string & handleshake_msg,std::string handleshake_key,MessageEventObserver recv_observer, CloseEventObserver close_observer) {
-				if (!unit::ipAddr_check(ip) || socket_ == nullptr){
+			int connect(const std::string& ip, int port,const std::string & handleshake_msg,std::string handleshake_key,MessageEventObserver recv_observer, CloseEventObserver close_observer) {
+				if (socket_ == nullptr ){
 					return -1;
 				}
 
 				boost::system::error_code err;
-				socket_->connect(TCP::endpoint(ADDRESS::from_string(ip), port), err);
+				boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(ip, err), port);
+				socket_->connect(endpoint, err);
 
 				connect_status_ = err.value() == 0 ? connectinged : disconnect;
 

@@ -66,7 +66,7 @@ namespace wheel {
 			}
 
 			int connect(std::string ip, int port) {
-				if (!unit::ipAddr_check(ip) || tcp_handler_ == nullptr) {
+				if ( tcp_handler_ == nullptr || ip.empty()) {
 					return -1;
 				}
 
@@ -116,6 +116,7 @@ namespace wheel {
 					if (ec) {
 						return;
 					}
+
 
 					if (ptr->get_connect_status() == wheel::tcp_socket::connectinged) {
 						return;

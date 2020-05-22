@@ -1,5 +1,6 @@
 #ifndef unit_h__
 #define unit_h__
+
 #include <string>
 #include <unordered_set>
 #include <random>
@@ -40,7 +41,7 @@ namespace wheel {
                                        "(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3})|(:(:[0-9A-Fa-f]{1,4})" \
                                        "{0,5}:(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}))$"
 
-		static std::uint32_t float_to_uint32(float f){
+		static std::uint32_t float_to_uint32(float f) {
 			return *(std::uint32_t*)(&f);
 		}
 
@@ -55,38 +56,39 @@ namespace wheel {
 			return res;
 		}
 
-		//åˆ¤æ–­å¥‡å¶æ€§
+		//ÅĞ¶ÏÆæÅ¼ĞÔ
 		static bool is_odd(int value) {
 			return (value & 1) == 0 ? true : false;
 		}
 
-		//åˆ¤æ–­æ˜¯å¦å¸¦æœ‰ç¬¦å·ä½
+		//ÅĞ¶ÏÊÇ·ñ´øÓĞ·ûºÅÎ»
 		static bool checkout_singned(std::uint32_t value) {
 			return ((value >> 31) & 0x01) == 1 ? true : false;
 		}
 
-		//è®¡ç®—æ–‡ä»¶çš„MD5å€¼
+		//¼ÆËãÎÄ¼şµÄMD5Öµ
 		static std::string get_md5_from_file(const std::string& file_path) {
-			//é»˜è®¤2M
+			//Ä¬ÈÏ2M
 			constexpr int md5_read_size = 1024 * 1024;
 			std::string md5_str;
 			try {
-				//é»˜è®¤è¯»åˆ°ç»“å°¾
-				std::ifstream file(file_path,std::ios::binary |std::ios::ate);
+				//Ä¬ÈÏ¶Áµ½½áÎ²
+				std::ifstream file(file_path, std::ios::binary | std::ios::ate);
 				if (file.is_open()) {
-					//è·å–æ–‡ä»¶å¤§å°
+					//»ñÈ¡ÎÄ¼ş´óĞ¡
 					std::size_t file_size = file.tellg();
-					//æŒ‡é’ˆåç§»æœ€å¥½è·Ÿä¸Šåç§»çš„å­—èŠ‚é•¿åº¦
+					//Ö¸ÕëÆ«ÒÆ×îºÃ¸úÉÏÆ«ÒÆµÄ×Ö½Ú³¤¶È
 					file.seekg(0, std::ios::beg);
-					if (file_size < 2* md5_read_size) {//å°æ–‡ä»¶å…¨éƒ¨éƒ½è®¡ç®—
+					if (file_size < 2 * md5_read_size) {//Ğ¡ÎÄ¼şÈ«²¿¶¼¼ÆËã
 						md5_str = cmd5::md5file(file);
-					}else {//å¤§æ–‡ä»¶è®¡ç®—å‰åï¼Œå„1M
+					}
+					else {//´óÎÄ¼ş¼ÆËãÇ°ºó£¬¸÷1M
 						std::string data_buffer;
 
 						data_buffer.resize(2 * md5_read_size);
 						file.read(&data_buffer[0], md5_read_size);
-						//ä»å¤´å¼€å§‹åç§»ç›¸åº”çš„å­—èŠ‚
-						file.seekg(file_size - md5_read_size,std::ios::beg);
+						//´ÓÍ·¿ªÊ¼Æ«ÒÆÏàÓ¦µÄ×Ö½Ú
+						file.seekg(file_size - md5_read_size, std::ios::beg);
 						file.read(&data_buffer[0] + md5_read_size, md5_read_size);
 
 						if (file.good()) {
@@ -106,7 +108,7 @@ namespace wheel {
 		static void split(std::vector<std::string>& result, const std::string& str, std::string demli) {
 			char* ptr = strtok((char*)str.c_str(), demli.c_str());
 			while (ptr != nullptr) {
-				if (strcmp(ptr,str.c_str()) ==-1){
+				if (strcmp(ptr, str.c_str()) == -1) {
 					result.push_back(std::move(ptr));
 				}
 
@@ -114,39 +116,39 @@ namespace wheel {
 			}
 		}
 
-		//uint8è½¬æ¢
+		//uint8×ª»»
 		constexpr std::uint8_t little_swap8(std::uint8_t value) {
 			return ((value & 0xf0) >> 4) | ((value & 0x0f) << 4);
 		}
-		//çŸ­æ•´å‹è½¬å¤§å°ç«¯
-		 constexpr std::uint16_t little_swap16(std::uint16_t value){
+		//¶ÌÕûĞÍ×ª´óĞ¡¶Ë
+		constexpr std::uint16_t little_swap16(std::uint16_t value) {
 			return ((value & 0xff00) >> 8) | ((value & 0x00ff) << 8);
 		}
 
-		//é•¿æ•´å‹è½¬å¤§å°ç«¯
-		 constexpr std::uint32_t little_swap32(std::uint32_t value) {
+		//³¤ÕûĞÍ×ª´óĞ¡¶Ë
+		constexpr std::uint32_t little_swap32(std::uint32_t value) {
 			return ((value & 0xff000000) >> 24) |
-				    ((value & 0x00ff0000) >> 8) | 
-				    ((value & 0x0000ff00) << 8) | 
-				    ((value & 0x000000ff) << 24);
+				((value & 0x00ff0000) >> 8) |
+				((value & 0x0000ff00) << 8) |
+				((value & 0x000000ff) << 24);
 		}
 
-		 //é•¿é•¿æ•´å‹è½¬å¤§å°ç«¯
-		 constexpr std::uint64_t little_swap64(std::uint64_t value) {
-			 return((value&0xff00000000000000)>>56) |
-				 ((value & 0x00ff000000000000) >> 40) |
-				 ((value & 0x0000ff0000000000) >>24) |
-				 ((value & 0x000000ff00000000) >> 8)|
-				 ((value & 0x00000000ff000000)<<8) |
-				 ((value & 0x0000000000ff0000) << 24) |
-				 ((value & 0x000000000000ff00) << 40) |
-				 ((value & 0x00000000000000ff) << 56);
-		 }
+		//³¤³¤ÕûĞÍ×ª´óĞ¡¶Ë
+		constexpr std::uint64_t little_swap64(std::uint64_t value) {
+			return((value & 0xff00000000000000) >> 56) |
+				((value & 0x00ff000000000000) >> 40) |
+				((value & 0x0000ff0000000000) >> 24) |
+				((value & 0x000000ff00000000) >> 8) |
+				((value & 0x00000000ff000000) << 8) |
+				((value & 0x0000000000ff0000) << 24) |
+				((value & 0x000000000000ff00) << 40) |
+				((value & 0x00000000000000ff) << 56);
+		}
 
-		 //floatçš„å¤§ç«¯è½¬æ¢
-		static std::uint32_t htonf(float f){
+		//floatµÄ´ó¶Ë×ª»»
+		static std::uint32_t htonf(float f) {
 			uint32_t p;
-			uint32_t sign =0;
+			uint32_t sign = 0;
 			if (f < 0) {// Get sign.
 				sign = 1;
 				f = -f;
@@ -156,28 +158,29 @@ namespace wheel {
 			return p;
 		}
 
-		//floatå°ç«¯è½¬æ¢
-		static float ntohf(uint32_t p){
+		//floatĞ¡¶Ë×ª»»
+		static float ntohf(uint32_t p) {
 			float f = static_cast<float>(((p >> 16) & 0x7fff));
 			f += (p & 0xffff) / 65536.0f;
-			if (((p >> 31) & 0x1) == 0x1) { 
+			if (((p >> 31) & 0x1) == 0x1) {
 				f = -f;
 			}
 			return f;
 		}
 
-		//ipv4è½¬int ç±»å‹
+		//ipv4×ªint ÀàĞÍ
 		static int inet4_pton(const char* cp, std::size_t& ap) {
 			std::size_t acc = 0;
 			std::size_t  dots = 0;
 			std::size_t  addr = 0;
 
-			do{
+			do {
 				char cc = *cp;
-				if (cc>='0'&& cc<='9'){
+				if (cc >= '0' && cc <= '9') {
 					acc = acc * 10 + (cc - '0');
-				}else if (cc == '.' || cc =='\0') {
-					if (++dots > 3 && cc =='.') {
+				}
+				else if (cc == '.' || cc == '\0') {
+					if (++dots > 3 && cc == '.') {
 						return 0;
 					}
 					/* Fall through */
@@ -187,8 +190,8 @@ namespace wheel {
 					}
 
 					//addr += (acc << (index * 8));
-					//ä»å·¦å¾€å³ï¼Œä½ä½æ”¾
-					addr = addr << 8 | acc; // è¿™å¥æ˜¯ç²¾å,æ¯æ¬¡å°†å½“å‰å€¼å·¦ç§»å…«ä½åŠ ä¸Šåé¢çš„å€¼
+					//´Ó×óÍùÓÒ£¬µÍÎ»·Å
+					addr = addr << 8 | acc; // Õâ¾äÊÇ¾«»ª,Ã¿´Î½«µ±Ç°Öµ×óÒÆ°ËÎ»¼ÓÉÏºóÃæµÄÖµ
 					acc = 0;
 				}
 			} while (*cp++);
@@ -202,27 +205,27 @@ namespace wheel {
 			return 1;
 		}
 
-		//ipv4è½¬int
-		static void inet4_ntop(std::size_t value, std::string& str){
+		//ipv4×ªint
+		static void inet4_ntop(std::size_t value, std::string& str) {
 
 			constexpr int inet_addrlen = 20;
 			str.resize(inet_addrlen);
 
-			//Intel æœºå™¨æ˜¯é«˜ä½å­˜é«˜ä½ï¼Œä½ä½å­˜ä½ä½ï¼Œå› æ­¤æ•°ç»„è¶Šå¤§è¶Šæ˜¯ä½ä½
+			//Intel »úÆ÷ÊÇ¸ßÎ»´æ¸ßÎ»£¬µÍÎ»´æµÍÎ»£¬Òò´ËÊı×éÔ½´óÔ½ÊÇµÍÎ»
 			unsigned char* temp_addrptr = (unsigned char*)(&value);
 			snprintf(&str[0], str.size(), "%d.%d.%d.%d",
-				*(temp_addrptr+3), *(temp_addrptr + 2), *(temp_addrptr + 1), *(temp_addrptr + 0));
+				*(temp_addrptr + 3), *(temp_addrptr + 2), *(temp_addrptr + 1), *(temp_addrptr + 0));
 		}
 
-		static std::uint32_t crc16(const char* data, unsigned short data_len_bit){
-			constexpr std::uint32_t crc16_poly = 0x1021; //   CRC_16æ ¡éªŒæ–¹å¼çš„å¤šé¡¹å¼.   
+		static std::uint32_t crc16(const char* data, unsigned short data_len_bit) {
+			constexpr std::uint32_t crc16_poly = 0x1021; //   CRC_16Ğ£Ñé·½Ê½µÄ¶àÏîÊ½.   
 			std::uint32_t crc = 0;
 
 			// initialize crc little endian
 			*((char*)&crc) = *(data + 1);
 			*((char*)&crc + 1) = *data;
 
-			for (int i = 0;i < data_len_bit;i++) {
+			for (int i = 0; i < data_len_bit; i++) {
 				unsigned char temp = 0;
 				if (i < data_len_bit - 16) {
 					temp = *(data + 2 + (i >> 3)); // calculate the position of bit in which byte 
@@ -305,8 +308,8 @@ namespace wheel {
 						return 0;
 					}
 
-					*tp++ = (u_char)(val >> 8) & 0xff;	//æ”¾åœ¨é«˜ä½ä¸Š
-					*tp++ = (u_char)val & 0xff; //æ”¾åœ¨ä½ä½ä¸Š
+					*tp++ = (u_char)(val >> 8) & 0xff;	//·ÅÔÚ¸ßÎ»ÉÏ
+					*tp++ = (u_char)val & 0xff; //·ÅÔÚµÍÎ»ÉÏ
 					seen_xdigits = 0;
 					val = 0;
 					continue;
@@ -405,7 +408,7 @@ namespace wheel {
 			/*
 			 * Format the result.
 			 */
-			char*tp = tmp;
+			char* tp = tmp;
 			for (int i = 0; i < (NS_IN6ADDRSZ / NS_INT16SZ); i++) {
 				/* Are we inside the best run of 0x00's? */
 				if (best.base != -1 && i >= best.base &&
@@ -426,7 +429,7 @@ namespace wheel {
 					(best.len == 6 || (best.len == 5 && words[5] == 0xffff))) {
 					std::string temp;
 					temp.resize(20);
-					memcpy(&temp[0], (char*)src + 12,4);
+					memcpy(&temp[0], (char*)src + 12, 4);
 
 					std::size_t value = 0;
 					std::size_t* ptr = (std::size_t*)temp.data();
@@ -434,16 +437,16 @@ namespace wheel {
 
 					inet4_ntop(value, temp);
 					std::size_t len = strlen(temp.c_str());
-					memcpy(tp, temp.c_str(),len);
+					memcpy(tp, temp.c_str(), len);
 					tp += len;
 					break;
 				}
-				
+
 				std::stringstream sstream;
 				sstream << std::hex << words[i];
 				std::size_t len = strlen(sstream.str().c_str());
 				memcpy(tp, sstream.str().c_str(), len);
-				tp +=len;
+				tp += len;
 			}
 			/* Was it a trailing run of 0x00's? */
 			if (best.base != -1 && (best.base + best.len) == (NS_IN6ADDRSZ / NS_INT16SZ)) {
@@ -475,7 +478,7 @@ namespace wheel {
 
 		static void bubble_sort_big(int array[], int n)
 		{
-			if (array == nullptr || n<=1){
+			if (array == nullptr || n <= 1) {
 				return;
 			}
 
@@ -497,15 +500,15 @@ namespace wheel {
 			}
 		}
 
-		//ä»å°åˆ°å¤§ï¼Œæ’å…¥æ’åº
+		//´ÓĞ¡µ½´ó£¬²åÈëÅÅĞò
 		static void insert_sort(int* arr, int n) {
 			int temp = -1;
-			for (int i = 1;i < n;++i) {
+			for (int i = 1; i < n; ++i) {
 				temp = arr[i];
 
 				int j = i - 1;
-				//ä»åå¾€å‰æ¬åŠ¨æ•°æ®
-				for (;j >= 0;--j) {
+				//´ÓºóÍùÇ°°á¶¯Êı¾İ
+				for (; j >= 0; --j) {
 					if (arr[j] <= temp) {
 						break;
 					}
@@ -513,12 +516,12 @@ namespace wheel {
 					arr[j + 1] = arr[j];
 				}
 
-				//å½“å‰çš„åä¸€ä¸ªä½ç½®ï¼Œæ”¾å…¥æ•°æ®
+				//µ±Ç°µÄºóÒ»¸öÎ»ÖÃ£¬·ÅÈëÊı¾İ
 				arr[j + 1] = temp;
 			}
 		}
 
-		//é€‰æ‹©æ’åº
+		//Ñ¡ÔñÅÅĞò
 		static void selection_sort(int* ptr, int len)
 		{
 			if (ptr == NULL || len <= 1) {
@@ -526,17 +529,17 @@ namespace wheel {
 			}
 
 			int minindex = -1;
-			//iæ˜¯æ¬¡æ•°ï¼Œä¹Ÿå³æ’å¥½çš„ä¸ªæ•°;jæ˜¯ç»§ç»­æ’
-			for (int i = 0;i < len - 1;++i) {
+			//iÊÇ´ÎÊı£¬Ò²¼´ÅÅºÃµÄ¸öÊı;jÊÇ¼ÌĞøÅÅ
+			for (int i = 0; i < len - 1; ++i) {
 				minindex = i;
-				for (int j = i + 1;j < len;++j) {
-					//ä»å°åˆ°å¤§
+				for (int j = i + 1; j < len; ++j) {
+					//´ÓĞ¡µ½´ó
 					if (ptr[j] < ptr[minindex]) {
 						minindex = j;
 					}
 				}
 
-				//è¿™é‡Œä¸€å®šè¦åŠ ä¸Š,æ¯”å¦‚(5,8,5,2,9,2,1,10)
+				//ÕâÀïÒ»¶¨Òª¼ÓÉÏ,±ÈÈç(5,8,5,2,9,2,1,10)
 				if (i == minindex) {
 					continue;
 				}
@@ -548,17 +551,19 @@ namespace wheel {
 			}
 		}
 
-		//äºŒåˆ†æ³•æŸ¥æ‰¾é€‚ç”¨äºæ•°æ®é‡è¾ƒå¤§æ—¶ï¼Œä½†æ˜¯æ•°æ®éœ€è¦å…ˆæ’å¥½é¡ºåº
+		//¶ş·Ö·¨²éÕÒÊÊÓÃÓÚÊı¾İÁ¿½Ï´óÊ±£¬µ«ÊÇÊı¾İĞèÒªÏÈÅÅºÃË³Ğò
 		inline int binary_search(int ptr[], int len, int key) {
 			int low = 0;
 			int high = len - 1;
-			while (low <=high){
+			while (low <= high) {
 				int mid = ((low + high) >> 1);
-				if (ptr[mid] ==key){
-					return mid-1;
-				}else if (ptr[mid]<key){
+				if (ptr[mid] == key) {
+					return mid - 1;
+				}
+				else if (ptr[mid] < key) {
 					low = mid + 1;
-				}else {
+				}
+				else {
 					high = mid - 1;
 				}
 			}
@@ -596,26 +601,29 @@ namespace wheel {
 			return stream.str();
 		}
 
-		static int32_t stringHex_to_int(const char*hex_str)
+		static int32_t stringHex_to_int(const char* hex_str)
 		{
 			int32_t value = -1;
-			if (hex_str != nullptr){
-				std::istringstream istr(hex_str);
-				istr >> std::hex >> value;
+			if (strlen(hex_str) ==0 || hex_str == nullptr){
+				return value;
 			}
 
-			return std::move(value);
+			std::istringstream istr(hex_str);
+			istr >> std::hex >> value;
+			return value;
 		}
 
-		static int32_t stringDec_to_int(const char* hex_str)
+		static int32_t stringDec_to_int(const char* str)
 		{
 			int32_t value = -1;
-			if (hex_str != nullptr) {
-				std::istringstream istr(hex_str);
-				istr >> value;
+			if (strlen(str) == 0 || str == nullptr) {
+				return value;
 			}
 
-			return std::move(value);
+			std::istringstream istr(str);
+			istr >> value;
+
+			return value;
 		}
 
 		static std::string find_substr(const std::string& str, const std::string key, const std::string& diml) {
@@ -638,7 +646,13 @@ namespace wheel {
 			return value;
 		}
 
-		//å•ä¸ªtupleå»ç´¢å¼•
+		//c++14Ê¹ÓÃ´«Èëlambda±í´ïÊ½
+		template <typename F, typename ...Args>
+		void for_each_args(F&& func, Args...args) {
+			int arr[] = { (std::forward<F>(func)(args),0)... };
+		}
+
+		//µ¥¸ötupleÈ¥Ë÷Òı
 		template <typename Tuple, typename F, std::size_t...Is>
 		void tuple_switch(const std::size_t i, Tuple&& t, F&& f, wheel::traits::index_sequence<Is...>) {
 			[](...) {}(
@@ -656,7 +670,7 @@ namespace wheel {
 				wheel::traits::make_index_sequence<N>{});
 		}
 
-		/**********ä½¿ç”¨ä¾‹å­********/
+		/**********Ê¹ÓÃÀı×Ó********/
 
 		//auto const t = std::make_tuple(42, 'z', 3.14, 13, 0, "Hello, World!");
 
@@ -667,98 +681,100 @@ namespace wheel {
 
 
 		template<typename F, typename...Ts, std::size_t...Is>
-		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func, wheel::traits::index_sequence<Is...>) {
+		void for_each_tuple_front(std::tuple<Ts...>&& tuple, F&& func, wheel::traits::index_sequence<Is...>) {
 			constexpr auto SIZE = std::tuple_size<wheel::traits::remove_reference_t<decltype(tuple)>>::value;
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-			if (constexpr(SIZE >0)) {
+			if (constexpr(SIZE > 0)) {
 				using expander = int[];
 				(void)expander {
 					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 				};
 			}
 #else
-			if constexpr(SIZE >0) {
+			if constexpr (SIZE > 0) {
 				using expander = int[];
 				(void)expander {
 					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 				};
-		}
+			}
 #endif // _MSC_VER <=1923
 
 
 		}
 
 		template<typename F, typename...Ts>
-		void for_each_tuple_front(const std::tuple<Ts...>& tuple, F func) {
-			for_each_tuple_front(tuple, func,wheel::traits::make_index_sequence<sizeof...(Ts)>());
+		void for_each_tuple_front(std::tuple<Ts...>&& tuple, F&& func) {
+			for_each_tuple_front(std::forward<std::tuple<Ts...>>(tuple), func, wheel::traits::make_index_sequence<sizeof...(Ts)>());
 		}
 
 		template<typename F, typename...Ts, std::size_t...Is>
-		void for_each_tuple_back(const std::tuple<Ts...>& tuple, F func, wheel::traits::index_sequence<Is...>) {
-			//åŒ¿åæ„é€ å‡½æ•°è°ƒç”¨
+		void for_each_tuple_back(std::tuple<Ts...>&& tuple, F&& func, wheel::traits::index_sequence<Is...>) {
+			//ÄäÃû¹¹Ôìº¯Êıµ÷ÓÃ
 			constexpr auto SIZE = std::tuple_size<wheel::traits::remove_reference_t<decltype(tuple)>>::value;
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-			if (constexpr (SIZE >0)) {
+			if (constexpr (SIZE > 0)) {
 				[](...) {}(0,
 					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 					);
 			}
 #else
-			if constexpr (SIZE >0) {
+			if constexpr (SIZE > 0) {
 				[](...) {}(0,
 					((void)std::forward<F>(func)(std::get<Is>(tuple), std::integral_constant<size_t, Is>{}), false)...
 					);
-		}
+			}
 #endif // #ifdef _MSC_VER <=1900
 
 
 		}
 
 		template<typename F, typename...Ts>
-		void for_each_tuple_back(std::tuple<Ts...>& tuple, F func) {
-			for_each_tuple_back(tuple, func, wheel::traits::make_index_sequence<sizeof...(Ts)>());
+		void for_each_tuple_back(std::tuple<Ts...>&& tuple, F&& func) {
+			for_each_tuple_back(std::forward<std::tuple<Ts...>>(tuple), func, wheel::traits::make_index_sequence<sizeof...(Ts)>());
 		}
 
-		//å•ä¸ªå‚æ•°ä¼ å•ä¸ªå‚æ•°ï¼Œæ²¡æœ‰index(tupleä¸èƒ½ç©º)
+		//µ¥¸ö²ÎÊı´«µ¥¸ö²ÎÊı£¬Ã»ÓĞindex(tuple²»ÄÜ¿Õ)
 		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each0(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
+		constexpr void for_each0(std::tuple<Args...>&& t, F&& f, wheel::traits::index_sequence<Idx...>) {
 			constexpr auto N = std::tuple_size <wheel::traits::remove_reference_t<decltype(t)>>::value;
 
-			//ç¼–è¯‘å™¨ç¼–è¯‘æ—¶ï¼Œä¼šåšåˆ¤æ–­
-			if constexpr (N>0){
-				using expander = int[];
-				(void)expander {((std::forward<F>(f)(std::get<Idx>(t))), false)...};
-			}
-
-		}
-
-
-		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each_l(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
-
-			constexpr auto size = sizeof...(Idx);
-			if constexpr (size > 0) {
+			//±àÒëÆ÷±àÒëÊ±£¬»á×öÅĞ¶Ï
+			if constexpr (N > 0) {
 				using expander = int[];
 				(void)expander {
-					((std::forward<F>(f)(std::get<Idx>(t))),false)...
-				};
-			}
-		}
-
-		template <typename... Args, typename F, std::size_t... Idx>
-		constexpr void for_each_r(std::tuple<Args...>& t, F&& f, wheel::traits::index_sequence<Idx...>) {
-			constexpr auto size = sizeof...(Idx);
-			if constexpr (size > 0) {
-				using expander = int[];
-				(void)expander {
-					((std::forward<F>(f)(std::get<size - Idx - 1>(t))),false)...
+					((std::forward<F>(f)(std::get<Idx>(t))), false)...
 				};
 			}
 
 		}
 
 
-		/***************ä½¿ç”¨åˆ—å­*****************/
+		template <typename... Args, typename F, std::size_t... Idx>
+		constexpr void for_each_l(std::tuple<Args...>&& t, F&& f, wheel::traits::index_sequence<Idx...>) {
+
+			constexpr auto size = sizeof...(Idx);
+			if constexpr (size > 0) {
+				using expander = int[];
+				(void)expander {
+					((std::forward<F>(f)(std::get<Idx>(t))), false)...
+				};
+			}
+		}
+
+		template <typename... Args, typename F, std::size_t... Idx>
+		constexpr void for_each_r(std::tuple<Args...>&& t, F&& f, wheel::traits::index_sequence<Idx...>) {
+			constexpr auto size = sizeof...(Idx);
+			if constexpr (size > 0) {
+				using expander = int[];
+				(void)expander {
+					((std::forward<F>(f)(std::get<size - Idx - 1>(t))), false)...
+				};
+			}
+
+		}
+
+
+		/***************Ê¹ÓÃÁĞ×Ó*****************/
 		//auto some = std::make_tuple("I am good", 255, 2.1);
 		//for_each_tuple(some, [](const auto& x, auto index) {
 		//	constexpr auto Idx = decltype(index)::value;
@@ -789,7 +805,7 @@ namespace wheel {
 			return ec.value();
 		}
 
-		static 	bool ipAddr_check(const std::string& ip_addr_dot_format)
+		static 	bool ip_v4_check(const std::string& ip_addr_dot_format)
 		{
 
 			std::regex expression(PATTERN_IPV4);
@@ -802,7 +818,7 @@ namespace wheel {
 			//return std::regex_match(ip_addr_dot_format, pattern);
 		}
 
-		static 	bool ipV6_check(const std::string& ip_addr_dot_format)
+		static 	bool ip_v6_check(const std::string& ip_addr_dot_format)
 		{
 			std::regex expression(PATTERN_IPV6);
 			return (std::regex_match(ip_addr_dot_format, expression));
@@ -834,7 +850,7 @@ namespace wheel {
 
 		static void random_str(std::string& random_str, int len) {
 			std::unordered_set<char> set;
-			for (int i = 0;i < len;i++) {
+			for (int i = 0; i < len; i++) {
 				static std::default_random_engine e((std::size_t)time(0));
 				static std::uniform_int_distribution<unsigned int> u(1, 3);
 				uint32_t ret = u(e);
@@ -906,5 +922,4 @@ namespace wheel {
 		}
 	}
 }
-
-#endif // unit_h__
+#endif // unit_h__

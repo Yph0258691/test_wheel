@@ -41,11 +41,6 @@ namespace wheel {
 			}
 
 			void build_response_str() {
-				if (headers_.empty()){
-					set_status_and_content(status_type::bad_gateway, "http package is empty");
-					return;
-				}
-
 				rep_str_.append(to_rep_string(status_));
 
 				for (auto& header : headers_) {
@@ -97,6 +92,7 @@ namespace wheel {
 				std::string content_type = get_content_type(res_type_);
 				if (content_type.empty()){
 					trans_type_ = transfer_type::normal;
+					headers_.clear();
 					set_status_and_content(status_type::bad_gateway, "send content_type is failure");
 					return;
 				}
@@ -186,6 +182,7 @@ namespace wheel {
 					std::string content_type = get_content_type(res_type_);
 					if (content_type.empty()){
 						trans_type_ = transfer_type::normal;
+						headers_.clear();
 						set_status_and_content(status_type::bad_gateway, "send content_type is failure");
 						return;
 					}
@@ -414,7 +411,14 @@ namespace wheel {
 					}
 
 					if (trans_type_ == transfer_type::chunked) {
-						chunked_data_.emplace_back(encode_str);
+						std::string len;
+						len.resize(64);
+						itoa_fwd((int)encode_str.size(), &len[0]);
+						std::string buff(len.c_str(), strlen(len.c_str()));
+
+						std::string data;
+						data.append(unit::to_hex_string(unit::stringDec_to_int(len.c_str()))).append(crlf).append(content).append(crlf).append(last_chunk).append(crlf);
+						chunked_data_.push_back(std::move(data));
 						build_chunked_response_str();
 						return;
 			       }

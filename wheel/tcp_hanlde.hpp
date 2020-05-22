@@ -195,7 +195,8 @@ namespace wheel {
 				}
 
 				boost::system::error_code err;
-				socket_->connect(TCP::endpoint(ADDRESS::from_string(ip), port), err);
+				boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(ip, err), port);
+				socket_->connect(endpoint, err);
 
 				connect_status_ = err.value() == 0 ? connectinged : disconnect;
 

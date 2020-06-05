@@ -365,34 +365,54 @@
 
 // 	server.run();
 // }
+//
+//#include <wheel/serialize.hpp>
+//
+//namespace client
+//{
+//	struct person
+//	{
+//		std::string	name;
+//		int64_t		 age;
+//	};
+//
+//	REFLECTION(person, name, age);
+//}
+//
+//int main()
+//{
+//	client::person p1 = { "tom", 20 };
+//	client::person p2 = { "jack", 19 };
+//	client::person p3 = { "mike", 21 };
+//
+//	std::vector<client::person> v{ p1, p2, p3 };
+//	wheel::str_stream::string_stream ss;
+//	wheel::serialization::to_json(ss, v);
+//	auto json_str = ss.str();
+//	std::cout << json_str << std::endl;
+//
+//	std::vector<client::person> v1;
+//	wheel::serialization::from_json(v1, json_str.data(), json_str.length());
+//}
+//
+//
 
-#include <wheel/serialize.hpp>
+#define WHEEL_ENABLE_SSL
+#include <iostream>
+#include <wheel/http_server.hpp>
 
-namespace client
-{
-	struct person
-	{
-		std::string	name;
-		int64_t		 age;
-	};
-
-	REFLECTION(person, name, age);
-}
+//校验的切面
+using namespace wheel::http_servers;
 
 int main()
 {
-	client::person p1 = { "tom", 20 };
-	client::person p2 = { "jack", 19 };
-	client::person p3 = { "mike", 21 };
+	wheel::http_servers::http_server server;
+	//server.set_ssl_conf({ "server.crt", "server.key","1234561" });
+	server.set_ssl_conf({ "www.wheellovecplus.xyz_bundle.crt", "www.wheellovecplus.xyz.key" });
+	server.listen(8080, 32);
+	server.set_http_handler<GET, POST>("/", [](request& req, response& res) {
+		res.set_status_and_content(status_type::ok, "hello world");
+		});
 
-	std::vector<client::person> v{ p1, p2, p3 };
-	wheel::str_stream::string_stream ss;
-	wheel::serialization::to_json(ss, v);
-	auto json_str = ss.str();
-	std::cout << json_str << std::endl;
-
-	std::vector<client::person> v1;
-	wheel::serialization::from_json(v1, json_str.data(), json_str.length());
+	server.run();
 }
-
-

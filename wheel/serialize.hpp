@@ -152,8 +152,6 @@ namespace wheel {
 					render_json_value(ss, jsv);
 				});
 			ss.put(']');
-
-			return true;
 		}
 
 		auto write_json_key = [](auto& s, auto i, auto& t) {
@@ -166,24 +164,16 @@ namespace wheel {
 		template<typename Stream, typename T>
 		static std::enable_if_t<traits::is_sequence_container<std::decay_t<T>>::value> to_json(Stream& s, T&& v){
 			using U = typename std::decay_t<T>::value_type;
+			constexpr auto flag = reflector::is_reflection_v<U>;
+
 			s.put('[');
 			const size_t size = v.size();
 			for (size_t i = 0; i < size; i++){
-#if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-				if (constexpr (reflector::is_reflection_v<U>)) {
+				if (flag) {
 					to_json(s, v[i]);
 				}else {
 					render_json_value(s, v[i]);
 				}
-
-#else
-				if constexpr (reflector::is_reflection_v<U>) {
-					to_json(s, v[i]);
-				}else {
-					render_json_value(s, v[i]);
-				}
-#endif// _MSC_VER <=1923
-
 
 				if (i != size - 1) {
 					s.put(',');
@@ -217,24 +207,19 @@ namespace wheel {
 			reflector::for_each_tuple_front(t, [&t, &s,Size](const auto& v, auto i){
 				constexpr auto Idx = decltype(i)::value;
 				constexpr auto Count = reflector::get_size<T>();
+				constexpr auto flag = reflector::is_reflection<decltype(v)>::value;
+
+				if (flag){
+					std::cout << "inter has reflect" << std::endl;
+				}
+
 				static_assert(Idx < Count,"Idx >Count");
 
 				write_json_key(s, i,t);
 				s.put(':');
 
-#if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-				if (constexpr (!reflector::is_reflection<decltype(v)>::value)){
-					render_json_value(s, t.*v);
-				}else{
-					to_json(s, t.*v);
-				}
-#else
-				if constexpr (!reflector::is_reflection<decltype(v)>::value){
-					render_json_value(s, t.*v);
-				}else{
-					to_json(s, t.*v);
-				}
-#endif// _MSC_VER <=1923
+				render_json_value(s, t.*v);
+
 				if (Idx < Count - 1) {
 					s.put(',');
 				}
@@ -1149,8 +1134,9 @@ namespace wheel {
 					static_assert(Idx < Count,"Idx >Count ");
 
 					using type_v = decltype(std::declval<T>().*std::declval<decltype(v)>());
+					constexpr auto flag = reflector::is_reflection<type_v>::value;
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-					if (constexpr (!reflector::is_reflection<type_v>::value)){
+					if (constexpr (!flag)){
 						rd.next();
 						if (rd.peek().str != reflector::get_name<T, Idx>().data()) {
 							g_has_error = true;
@@ -1168,7 +1154,7 @@ namespace wheel {
 						rd.next();
 					}
 #else
-					if constexpr (!reflector::is_reflection<type_v>::value){
+					if constexpr (!flag){
 						rd.next();
 						if (rd.peek().str != reflector::get_name<T, Idx>().data()) {
 							g_has_error = true;
@@ -1190,16 +1176,18 @@ namespace wheel {
 		}
 
 		template<typename U, typename T>
-		static void assign(reader_t& rd, T& t) {
+		static bool assign(reader_t& rd, T& t) {
+			constexpr auto flag = reflector::is_reflection<U>::value;
+
 #if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-			if (constexpr (!reflector::is_reflection<U>::value)){
+			if (constexpr (!flag)){
 				read_json(rd, t);
 			}else{
 				do_read(rd, t);
 				rd.next();
 			}
 #else
-			if constexpr (!reflector::is_reflection<U>::value){
+			if constexpr (!flag){
 				read_json(rd, t);
 			}else{
 				do_read(rd, t);
@@ -1209,15 +1197,16 @@ namespace wheel {
 #endif// _MSC_VER <=1923
 
 			if (g_has_error) {
-				return;
+				return true;
 			}
 
 			rd.next();
+			return false;
 		}
 
 		template<typename T>
 		static std::enable_if_t<traits::is_tuple<std::decay_t<T>>::value, bool>
-			from_json(T&& t, const char* buf, size_t len = -1) {
+			from_json_container(T&& t, const char* buf, size_t len = -1) {
 			using U = std::decay_t<T>;
 			g_has_error = false;
 			reader_t rd(buf, len);
@@ -1230,27 +1219,29 @@ namespace wheel {
 		}
 
 		template<typename T>
-		static std::enable_if_t<traits::is_sequence_container<std::decay_t<T>>::value, bool> from_json(T&& v, const char* buf, size_t len = -1) {
+		static std::enable_if_t<traits::is_sequence_container<std::decay_t<T>>::value, bool> from_json_container(T&& v, const char* buf, size_t len = -1) {
 			v.clear();
 			using U = typename std::decay_t<T>::value_type;
-			U t{};
 			reader_t rd(buf, len);
 			rd.next();
 			while (rd.peek().type != token::t_end){
+				U t{};
 				if (g_has_error) {
 					return false;
 				}
 
-				assign<U>(rd, t);
-				v.push_back(std::move(t));
+				bool ret = assign<U>(rd, t);
+				if (!ret){
+					v.push_back(std::move(t));
+				}
 			}
 
-			return true;
+			return !g_has_error;
 		}
 
 		template<typename T>
 		static std::enable_if_t<reflector::is_reflection_v<T>, bool> 
-			from_json(T&& t, const char* buf, size_t len = -1) {
+			from_json_container(T&& t, const char* buf, size_t len = -1) {
 			g_has_error = false;
 			reader_t rd(buf, len);
 			do_read(rd, t);
@@ -1259,7 +1250,7 @@ namespace wheel {
 
 		//this interface support disorderly parse, however slower than from_json interface
 		template<typename T, typename = std::enable_if_t<reflector::is_reflection<T>::value>>
-		static bool from_json0(T&& t, const char* buf, size_t len = -1) {
+		static bool from_json(T&& t, const char* buf, size_t len = -1) {
 			g_has_error = false;
 			reader_t rd(buf, len);
 			do_read0(rd, t);
@@ -1294,32 +1285,33 @@ namespace wheel {
 
 				unit::tuple_switch(index, tp, [&t, &rd](auto& v) {
 					using type_v = decltype(std::declval<T>().*std::declval<decltype(v)>());
-#if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
-					if (constexpr (!reflector::is_reflection<type_v>::value)){
-						rd.next();
-						rd.next();
-						read_json(rd, t.*v);
-					}else{
-						rd.next();
-						rd.next();
-						do_read0(rd, t.*v);
-						rd.next();
-					}
-					}, traits::make_index_sequence<Size>{});
-#else
-					if constexpr (!reflector::is_reflection<type_v>::value){
-						rd.next();
-						rd.next();
-						read_json(rd, t.*v);
-					}else{
-						rd.next();
-						rd.next();
-						do_read0(rd, t.*v);
-						rd.next();
-					}
-					}, traits::make_index_sequence<Size>{});
-#endif // _MSC_VER <=1923
+					constexpr auto flag = reflector::is_reflection<type_v>::value;
 
+#if (_MSC_VER >= 1700 && _MSC_VER <= 1900) //vs2012-vs2015
+					if (constexpr (!flag)){
+						rd.next();
+						rd.next();
+						read_json(rd, t.*v);
+					}else{
+						rd.next();
+						rd.next();
+						do_read0(rd, t.*v);
+						rd.next();
+					}
+#else
+					if constexpr (!flag){
+						rd.next();
+						rd.next();
+						read_json(rd, t.*v);
+					}else{
+						rd.next();
+						rd.next();
+						do_read0(rd, t.*v);
+						rd.next();
+					}
+					
+#endif // _MSC_VER <=1923
+			}, traits::make_index_sequence<Size>{});
 				loop_idx++;
 			}
 		}
